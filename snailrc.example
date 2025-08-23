@@ -1,0 +1,132 @@
+# Config file for a_tray
+# ~/.a_tray.config
+
+# this file uses anticomments
+# only stuff that starts with ^, &, !, or $ counts
+# the prepended symbol tells it what you're doin
+# these pound symbols are meaningless
+see? meaningless
+
+
+# if you pick conflicting applets, I'll pick
+# if you leave out an applet, I'll leave it out
+# if you pick conflicting settings, I'll pick
+# if you leave out a setting, I'll pick
+
+# Run:
+# $ a_tray_config -c
+# in order to incorporate config file changes
+# Run: 
+# $ a_tray_config -g
+# in order to generate a config file from current settings
+# generated config file is ~/.a_tray.config[n]
+
+# possible applet names are:
+
+# date
+# time
+# battery_only
+# ac_only
+# battery_ac
+# battery_only_small
+# ac_only_small
+# battery_ac_small
+# volume
+# volume_small
+# cpu_temp
+# cpu_temp_small
+# ram
+# swap
+# fan_speed
+# vpn
+# vpn_small
+# wifi
+# wifi_small
+# ping
+# ping_small
+
+[right to left ordering] # prepend with a ^
+
+^battery_ac_small
+^wifi_small
+^vpn_small
+^date
+^time
+^battery_ac
+^wifi
+
+[end right to left ordering] 
+
+
+
+# appear-disappear priority of applets you want
+# prepend & with your applet name to signal priority
+
+[appear-disappear priority]
+
+&time
+&date
+&battery_ac
+
+[end appear-disappear priority]
+
+
+# special flags
+# write the names of the flags you want, each on own line
+# if they conflict, I'll pick
+# if you leave it out, I'll pick
+
+# possible special flags:
+
+# simultaneous_big_small_applets
+
+[special flags]
+
+%simultaneous_big_small_applets
+
+[end special flags]
+
+#Special settings
+
+[special settings]
+
+
+[end special settings]
+
+
+
+#Color settings
+
+[color settings
+$BLACK=\e[1;30m
+$RED=\e[1;31m
+$GREEN=\e[1;32m
+$YELLOW=\e[1;33m
+$BLUE=\e[1;34m
+$MAGENTA=\e[1;35m
+$CYAN=\e[1;36m
+$LIGHT_GREY=\e[1;37m
+$GREY=\e[1;90m
+$LIGHT_RED=\e[1;91m
+$LIGHT_GREEN=\e[1;92m
+$LIGHT_YELLOW=\e[1;93m
+$LIGHT_BLUE=\e[1;94m
+$LIGHT_MAGENTA=\e[1;95m
+$LIGHT_CYAN=\e[1;96m
+$WHITE=\e[1;97m
+
+$LABEL_COLOR=LIGHT_GREY
+$NUMBER_COLOR=LIGHT_CYAN
+$VOLUME_COLOR=LIGHT_CYAN
+$MUTE_COLOR=GREEN
+$TIME_COLOR=YELLOW
+$COLON_COLOR=LIGHT_GREY
+$SYMBOL_COLOR=GREY
+$DATE_COLOR=CYAN
+$DATE_DIVIDER_COLOR=GREY
+$DIVIDER_COLOR=LIGHT_BLUE
+$BAD_COLOR=LIGHT_RED
+$GOOD_COLOR=$GREEN;
+$NORMAL_COLOR=$LIGHT_GREY;
+
+[end color settings]

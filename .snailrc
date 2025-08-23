@@ -1,0 +1,92 @@
+# snail config file
+
+# for a complete listing of options,
+# and a complete listing of defaults,
+# see snailrc.readme
+
+# this doc uses anticomments
+# anything not prepended by ^ & % $ is ignored
+see? this line doesn't matter
+# the section divisions don't matter either
+# you could scramble everything up if you want
+# extra whitespace in a line will fuck it up 
+# until I fix that
+
+	############################
+	# right-to-left ordering	#
+	# put them in order			#
+	# prepend with a ^			#
+	############################
+
+^battery_ac_small
+^wifi_small
+^vpn_small
+^date
+^time
+^battery_ac
+^wifi
+^vpn
+^volume
+
+	#################################################
+	# appear-disappear priority							#
+	# controls which applets appear depending			#
+	# on window size. Put them in order with most	#
+	# important at the top.									#
+	# the applets here must all be listed in the 	#
+	# RTL ordering above, though not necessarily		#
+	# in the same order. Any omitted applets here 	#
+	# will not be displayed.								#
+	# prepend with &											#
+	#################################################
+	
+&battery_ac_small
+&wifi_small
+&vpn_small
+&time
+&battery_ac
+&volume
+&vpn
+&wifi
+&date
+
+	######################
+	# special flags		#
+	# turns settings on	#
+	# all default to off	#
+	######################
+
+!simultaneous_big_small_applets
+!small_applets_all_same_priority
+
+	############################
+	# special settings			#
+	# prepend with %				#
+	# omitted goes to default	#
+	# %setting_name=[number]	#
+	############################
+
+%poll_delay=1
+	
+   ############################
+   # color settings				#
+   # for some reason 			#
+	# I put these in all caps	#
+   # prepend with $				#
+   # omitted goes to default	#			
+   # $COLOR_CLASS=COLOR_NAME	#
+   ############################
+
+$LABEL=LIGHT_GREY
+$NUMBER=LIGHT_CYAN
+$VOLUME=LIGHT_CYAN
+$MUTE=GREEN
+$TIME=YELLOW
+$COLON=LIGHT_GREY
+$SYMBOL=GREY
+$DATE=CYAN
+$DATE=GREY
+$DIVIDER=LIGHT_BLUE
+$BAD=LIGHT_RED
+$GOOD=GREEN
+$NORMAL=LIGHT_GREY
