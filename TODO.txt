@@ -1,4 +1,6 @@
 
 figure out how to figure out what terminal emulator is being used
 
+make the parsing of the config file ignore white space
+
 make the thing
