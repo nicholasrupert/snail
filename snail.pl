@@ -148,39 +148,40 @@ my @ACCEPTABLE_COLOR_NAMES= (
 # the ascii values are hard coded because the alacritty theme or
 # whatever will change the hex values of these ascii values anyway
 
-my $BLACK="\e[1;30m";
-my $RED="\e[1;31m";
-my $GREEN="\e[1;32m";
-my $YELLOW="\e[1;33m";
-my $BLUE="\e[1;34m";
-my $MAGENTA="\e[1;35m";
-my $CYAN="\e[1;36m";
-my $LIGHT_GREY="\e[1;37m";
-my $GREY="\e[1;90m";
-my $LIGHT_RED="\e[1;91m";
-my $LIGHT_GREEN="\e[1;92m";
-my $LIGHT_YELLOW="\e[1;93m";
-my $LIGHT_BLUE="\e[1;94m";
-my $LIGHT_MAGENTA="\e[1;95m";
-my $LIGHT_CYAN="\e[1;96m";
-my $WHITE="\e[1;97m";
-
+my %ASCII_COLORS= {
+	"BLACK" => "\e[1;30m",
+	"RED" => "\e[1;31m",
+	"GREEN" => "\e[1;32m",
+	"YELLOW" => "\e[1;33m",
+	"BLUE" => "\e[1;34m",
+	"MAGENTA" => "\e[1;35m",
+	"CYAN" => "\e[1;36m",
+	"LIGHT_GREY" => "\e[1;37m",
+	"GREY" => "\e[1;90m",
+	"LIGHT_RED" => "\e[1;91m",
+	"LIGHT_GREEN" => "\e[1;92m",
+	"LIGHT_YELLOW" => "\e[1;93m",
+	"LIGHT_BLUE" => "\e[1;94m",
+	"LIGHT_MAGENTA" => "\e[1;95m",
+	"LIGHT_CYAN" => "\e[1;96m",
+	"WHITE" => "\e[1;97m"
+};
 # default colors get set here so that we can be sure all get set
 
-%colors = {
-	"LABEL" => $LIGHT_GREY,
-	"NUMBER" => $LIGHT_CYAN,
-	"VOLUME" => $LIGHT_CYAN,
-	"MUTE" => $GREEN,
-	"TIME" => $YELLOW,
-	"COLON" => $LIGHT_GREY,
-	"SYMBOL" => $GREY,
-	"DATE" => $CYAN,
-	"DATE_DIVIDER" => $GREY,
-	"DIVIDER" => $LIGHT_BLUE,
-	"BAD" => $LIGHT_RED,
-	"GOOD" => $GREEN,
-	"NORMAL" => $LIGHT_GREY 
+%colors = {  # I think this is wrong, should be names in quotes
+	"LABEL" => $ASCII_COLORS{"LIGHT_GREY"},
+	"NUMBER" => $ASCII_COLORS{"LIGHT_CYAN"},
+	"VOLUME" => $ASCII_COLORS{"LIGHT_CYAN"},
+	"MUTE" => $ASCII_COLORS{"GREEN"},
+	"TIME" => $ASCII_COLORS{"YELLOW"},
+	"COLON" => $ASCII_COLORS{"LIGHT_GREY"},
+	"SYMBOL" => $ASCII_COLORS{"GREY"},
+	"DATE" => $ASCII_COLORS{"CYAN"},
+	"DATE_DIVIDER" => $ASCII_COLORS{"GREY"},
+	"DIVIDER" => $ASCII_COLORS{"LIGHT_BLUE"},
+	"BAD" => $ASCII_COLORS{"LIGHT_RED"},
+	"GOOD" => $ASCII_COLORS{"GREEN"},
+	"NORMAL" => $ASCII_COLORS{"LIGHT_GREY"} 
 };
 
 # now read the config file, check inputs for sanity, and set the configs
