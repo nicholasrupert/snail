@@ -2,7 +2,7 @@
 
 # for a complete listing of options,
 # and a complete listing of defaults,
-# see .snailrc.example
+# see snailrc.example
 
 # this doc uses anticomments
 # anything not prepended by ^ & % $ is ignored
