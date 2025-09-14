@@ -168,7 +168,7 @@ my @ACCEPTABLE_COLOR_NAMES= (
 
 %settings = (
 	"poll_delay" => ".5",
-	"small_applets" => "1",
+	"autohide_small_applets" => "1",
 	"date_format" => "\%Y-\%m-\%d",
 	"time_format" => "24h",
 	"alignment" => "right"
@@ -299,8 +299,6 @@ unless ($config_file eq "DEFAULTS") {
 			print ("Color class $k set: $colors{$1}\n");
 		}
 		# no else here, because everything else is ignored
-		
-		$number_of_small_applets=$small_applets_index;
 	}
 } else {  # default settings
 	@applets_rtl_array = (
@@ -391,15 +389,10 @@ sub showApplets {
 	my $TERMINAL_WIDTH=`tput cols`;
 	print ("Terminal width: $TERMINAL_WIDTH");
 	my $displayed_applets_max_width=0;
-	
-	# I suspect for the display we don't need a priority array/hash, just rtl
-	my @displayed_applets_priority_array; #in priority order, not rtl order
-	my @displayed_applets_rtl_array; # in rtl order, only containing applets actually displayed
-	
-	my %displayed_applets_priority_hash;
-	my %displayed_apprets_rtl_hash;
+	my @displayed_applets_priority; #in priority order, not rtl order
+	my @displayed_applets_rtl; # in rtl order, only containing applets actually displayed
 	my $leading_spaces=0;
-		
+	
 	my $DIVIDER = " | ";
 	my $DATE_TIME_DIVIDER = " ";
 
@@ -409,74 +402,26 @@ sub showApplets {
 	my $number_of_small_applets=@small_applets;
 	
 	my $priority_index=0;
-	my $rtl_index=0;
-	# get number of small applets. they're treated as a bloc.
-		
 	foreach (@applets_priority_array) {
-		# if it's the first applet in priority, no divider check needed.
-		if ($priority_index==0) {
-			if ($_ eq "small_applets") {
-				$displayed_applets_max_width = $number_of_small_applets;
-			} else {
-				$displayed_applets_max_width = $APPLETS_MAX_WIDTHS{$_};
+		if ($_ eq "small_applets" and $displayed_applets_max_width+$number_of_small_applets*$SMALL_APPLETS_WIDTH<=$TERMINAL_WIDTH) {
+			foreach (@small_applets) {
+				$applets_priority[$priority_index]=$_;
+				$displayed_applets_max_width+=$SMALL_APPLETS_WIDTH+$DIVIDER;
+				$priority_index++;
 			}
-			# using less than instead of <= leaves a space for cursor
-			if ($displayed_applets_max_width < $TERMINAL_WIDTH) {
-				$displayed_applets_priority_array[0]=$_;
-				$displayed_applets_ltr_array[$applets_ltr_hash{$_}]=$_;
-				$displayed_applets_priority_hash{$_}=0;
-				$displayed_applets_ltr_hash{$_}=$applets_ltr_hash{$_};
-			}	else { 
-				# we're not displaying small_applets one at a time
-				#because it would be hard to tell which one you're seeing
-				$displayed_applets_priority_array[0]="too_small";
-				$displayed_applets_ltr_array[$applets_ltr_hash{$_}]="too_small";
-				$displayed_applets_priority_hash{$_}=0;
-				$applets_ltr_hash{$_}="too small";
-				last;
-			}
-		} else { # ok so we're NOT on the first thingy displayed
-			if ($_ eq "small_applets") {
-				$displayed_applets_max_width += $number_of_small_applets;
-			} else {
-				$displayed_applets_max_width += $APPLETS_MAX_WIDTHS{$_};
-			}
-			# figure out divider width. is time next to date?
-			if ($_ eq "date") {
-				# oof, inserting a new applet could add a short divider
-				# on either side. 
-				# need to check whether the nonempty 
-				# ok you got this. just check ltr indices between them?
-				unless ($applets_ltr_hash{"time"}==undef) {
-					for (my $k=lesser($applets_ltr_hash{"time"},$applets_ltr_hash{"date"}); $k<=greater($applets_ltr_hash{"time"},$applets_ltr_hash{"date"})
-			}
-		if ($priority_index>0) {
-		 and $applets_ltr_hash{$_} 
+			$displayed_applets_max_width+=$SMALL_APPLETS_DIVIDER;
+		} elsif ($displayed_applets_max_width+$APPLETS_MAX_WIDTHS{$_}+$DIVIDER_WIDTH<=$TERMINAL_WIDTH) {
+			
+				$applets_priority[$priority_index]=$_;
+				$displayed_apples_max_width+=$APPLETS_MAX_WIDTHS{$_};
+				$priority_index++;
 		}
+		
+	}
+
 	
 }
-
-
-# i am fully aware of max and min, but
-# it would be neat not to include any modules at all
-# also, I do not give a fuck about if the two
-# numbers are equal.
 	
-sub lesser {
-	if ($_[0] < $_[1]) {
-		return ($_[0]);
-	} else {
-		return ($_[1]);
-	}
-}
-
-sub greater {
-	if ($_[0] > $_[1]) {
-		return ($_[0]);
-	} else {
-		return ($_[1]);
-	}
-}
 
 showApplets();
 

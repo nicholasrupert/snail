@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+my @errors;
 
 # Perl note: backticks use /bin/sh
 # /bin/sh is just a shortcut for ksh, bash or whatever
@@ -17,8 +18,8 @@ my $ACCEPTABLE_SHELLS = "bash|ksh|csh";
 my $shell;
 ($shell)=(`echo \$SHELL`=~/($ACCEPTABLE_SHELLS)/);
 unless ($shell=~/$ACCEPTABLE_SHELLS/) {
-	print ("Error: shell $shell not recognized\n");
-	exit (0);
+	push (@errors,  "Error: shell $shell not recognized\n");
+	exit (1);
 }
 print ("Shell: $shell\n");
 
@@ -90,16 +91,22 @@ print("Config file: $config_file\n");
 #	Read and parse the config file					#
 #################################################
 
-my @applets_rtl_array;
-my @applets_priority_array;
-my %applets_rtl_hash;
-my %applets_priority_hash;
-my @small_applets;
-my %settings;
+my @applets_priority_array; # order applets appear/disappear with size changes
+my %small_applets; # just little color blobs in right or left side
+my %settings; 
 my %colors;
+my @small_applets;
+my %displayed_applets_ltr_list;
+
+my $SMALL_DIVIDER=" ";
+my $BIG_DIVIDER=" | ";
+
+my %applets_rtl_list = (
+	"head" => "tail"
+); #it's a linked list
+
 
 my @ACCEPTABLE_APPLETS=(
-	"small_applets",
 	"time",
 	"date",
 	"battery_ac",
@@ -107,22 +114,24 @@ my @ACCEPTABLE_APPLETS=(
 	"cpu_temp",
 	"wifi",
 	"vpn",
-	"volume"
+	"volume",
+	"small_applets"
 );
 
 my @ACCEPTABLE_SMALL_APPLETS=(
 	"battery_ac_small",
-	"volume_small",
+	"mute_small",
 	"cpu_temp_small",
 	"wifi_small",
-	"vpn_small"
+	"vpn_small",
+	"volume_small"
 );
 
 my @ACCEPTABLE_SETTINGS=(
 	"poll_delay",
 	"date_format",
 	"time_format",
-	"autohide_small_applets"
+	"small_applets"
 );
 
 my @ACCEPTABLE_COLOR_CLASSES=(
@@ -170,7 +179,7 @@ my @ACCEPTABLE_COLOR_NAMES= (
 	"poll_delay" => ".5",
 	"small_applets" => "1",
 	"date_format" => "\%Y-\%m-\%d",
-	"time_format" => "24h",
+	"time_format" => "\%H:\%M",
 	"alignment" => "right"
 );
 
@@ -213,14 +222,16 @@ my %ASCII_COLORS = (
 	"DIVIDER" => $ASCII_COLORS{"LIGHT_BLUE"},
 	"BAD" => $ASCII_COLORS{"LIGHT_RED"},
 	"GOOD" => $ASCII_COLORS{"GREEN"},
-	"VERY_BAD" => "BLINK", # its special
 	"NORMAL" => $ASCII_COLORS{"LIGHT_GREY"},
 	"BLINK_1" => $ASCII_COLORS{"RED"},
-	"BLINK_2" => $ASCII_COLORS{"YELLOW"}
+	"BLINK_2" => $ASCII_COLORS{"YELLOW"},
+	"VERY_BAD" => "BLINK" # its special
 );
 
 my $number_of_small_applets=0;
 my $date_and_time_adjacent=0;
+my $SMALL_APPLETS_WIDTH=1;
+my $DIVIDER_WIDTH=3; # space|space
 
 # now read the config file, check inputs for sanity, and set the configs
 
@@ -228,9 +239,9 @@ unless ($config_file eq "DEFAULTS") {
 	open (my $config_readline, '<', $config_file);
 	print ("\n");
 	my $nextline;
-	my $rtl_index=0;
 	my $priority_index=0;
 	my $small_applets_index=0;
+	my $previous_applet="head";
 	for (my $i=0; <$config_readline>; $i++) {
 		# anticomment character for rtl order is ^
 		if ($_=~/^\^(.*)/) {
@@ -238,17 +249,9 @@ unless ($config_file eq "DEFAULTS") {
 				print ("Error: applet $1 in RTL order not recognized\n");
 				exit (0);
 			}
-			$applets_rtl_array[$rtl_index]=$1;
-			$applets_rtl_hash{$1}=$rtl_index;
-			print("RTL $rtl_index: $applets_rtl_array[$rtl_index]\n");
-			
-			# this bit checks for whether time and date are next
-			# to each other because they have a special divider
-			if (($applets_rtl_array[$i] eq "time" and $applets_rtl_array[$i-1] eq "date")
-				|| ($applets_rtl_array[$i] eq "date" and $applets_rtl_array[$i-1] eq "time")) {
-				$date_and_time_adjacent=1;
-			}
-			$rtl_index++;
+			$applets_rtl_list{$1} = $applets_rtl_list{$previous_applet};
+			$applets_rtl_list{$previous_applet} = $1;
+			$previous_applet = $1;
 		} 
 		# anticomment character for appearance/disappearance priority is &
 		elsif ($_=~/^&(.*)/) {
@@ -257,7 +260,7 @@ unless ($config_file eq "DEFAULTS") {
 				exit (0);
 			}
 			$applets_priority_array[$priority_index]=$1;
-			$applets_priority_hash{$1}=$priority_index;
+#			$applets_priority_hash{$1}=$priority_index;
 			print("Priority index $priority_index: $applets_priority_array[$priority_index]\n");
 			$priority_index++;
 		} 
@@ -270,7 +273,7 @@ unless ($config_file eq "DEFAULTS") {
 			$small_applets[$small_applets_index]=$1;
 			print("Small applets index $small_applets_index: $small_applets[$small_applets_index]\n");
 			$small_applets_index++;
-		} 
+		}
 
 		# anticomment character for special settings is !
 		# form is %setting=number
@@ -303,58 +306,30 @@ unless ($config_file eq "DEFAULTS") {
 		$number_of_small_applets=$small_applets_index;
 	}
 } else {  # default settings
-	@applets_rtl_array = (
-		"small_applets",
-		"time",
-		"date",
-		"battery_ac",
-		"fan_speed",
-		"cpu_temp",
-		"wifi",
-		"vpn",
-		"volume"		
+	%applets_rtl_list = ( # check this against the array before changing
+		"head"=>"small_applets",
+		"small_applets"=>"time",
+		"time" => "date",
+		"date" => "battery_ac",
+		"battery_ac" => "fan_speed",
+		"fan_speed" => "cpu_temp",
+		"cpu_temp" => "wifi",
+		"wifi" => "vpn",
+		"vpn" => "volume",
+		"volume" => "tail"		
 	);
-	%applets_rtl_hash = (
-		"small_applets" => 0,
-		"time" => 1,
-		"date" => 2,
-		"battery_ac" => 3,
-		"fan_speed" => 4,
-		"cpu_temp" => 5,
-		"wifi" => 6,
-		"vpn" => 7,
-		"volume" => 8		
-	);
-	@applets_priority_array = (
-		"small_applets",
-		"time",
-		"date",
-		"battery_ac",
-		"volume",
-		"vpn",
-		"wifi",
-		"cpu_temp",
-		"fan_speed"
-	);
-	%applets_priority_hash = (
-		"small_applets" => 0,
-		"time" => 1,
-		"date" => 2,
-		"battery_ac" => 3,
-		"volume" => 4,
-		"vpn" => 5,
-		"wifi" => 6,
-		"cpu_temp" => 7,
-		"fan_speed" => 8
-	);
+#	$number_of_small_applets=0;
+#	$date_and_time_adjacent=1;
 	# default special, flag, and color settings already set
+	print ("Using defaults. No config file opened.\n");
 }
 
 # check that all applets in priority listing are in RTL listing
-foreach (@applets_priority) {
-	my $current_applet=$_;
-	unless (	grep { $current_applet eq $_ } @applets_rtl) {
-		print ("Error: applet $current_applet appears in priority list but not in RTL list\n");
+
+
+foreach (@applets_priority_array) {
+	unless (exists $applets_rtl_list{$_}) {
+		print ("Error: applet $_ appears in priority list but not in RTL list\n");
 		exit (0);
 	}
 }
@@ -371,118 +346,112 @@ print ("All applets in priority list appear in RTL list.\n");
 my %APPLETS_MAX_WIDTHS = (		# all small applets have width 1			
 	"time" => "5",					# 23:59
 	"date" => "10",					# 2025-12-31
-	"battery_ac" => "7",			# ac 39% / bat 39% 
+	"battery_ac" => "7",			# bat 39% 
 	"fan_speed" => "7",				# who knows maybe fan 100
 	"cpu_temp" => "9",				# CPU 100*C
 	"wifi" => "9",					# wifi up / wifi down
 	"vpn" => "8",						# vpn bg / vpn down	
-	"volume" => "11"					# audio muted / audio 123%
+	"volume" => "11",					# audio muted / audio 123%
+	"small_applets" => $number_of_small_applets
 );
 
 print ("applets max width: ".$APPLETS_MAX_WIDTHS{"time"}."\n");
 
 
-my $SMALL_APPLETS_WIDTH=1;
 
-my $DIVIDER_WIDTH=3; # space|space
+%displayed_applets_ltr_list = ( # THIS IS LEFT TO RIGHT
+	"head" => "tail"
+); #this is a linked list lmao I heard my CS friends mention them
 
-sub showApplets {
-	
-	my $TERMINAL_WIDTH=`tput cols`;
-	print ("Terminal width: $TERMINAL_WIDTH");
-	my $displayed_applets_max_width=0;
-	
-	# I suspect for the display we don't need a priority array/hash, just rtl
-	my @displayed_applets_priority_array; #in priority order, not rtl order
-	my @displayed_applets_rtl_array; # in rtl order, only containing applets actually displayed
-	
-	my %displayed_applets_priority_hash;
-	my %displayed_apprets_rtl_hash;
-	my $leading_spaces=0;
-		
-	my $DIVIDER = " | ";
-	my $DATE_TIME_DIVIDER = " ";
+#structure looks like this:
+# "first" => first_applet_name,
+# first_applet_name => second_applet_name,
+# second_applet_name => last_applet_name
+# last_applet_name => "last"
 
-	# this gets the total length of applets (each at max width)
-	# that would fit in the terminal
-	
-	my $number_of_small_applets=@small_applets;
-	
-	my $priority_index=0;
-	my $rtl_index=0;
-	# get number of small applets. they're treated as a bloc.
-		
-	foreach (@applets_priority_array) {
-		# if it's the first applet in priority, no divider check needed.
-		if ($priority_index==0) {
-			if ($_ eq "small_applets") {
-				$displayed_applets_max_width = $number_of_small_applets;
-			} else {
-				$displayed_applets_max_width = $APPLETS_MAX_WIDTHS{$_};
-			}
-			# using less than instead of <= leaves a space for cursor
-			if ($displayed_applets_max_width < $TERMINAL_WIDTH) {
-				$displayed_applets_priority_array[0]=$_;
-				$displayed_applets_ltr_array[$applets_ltr_hash{$_}]=$_;
-				$displayed_applets_priority_hash{$_}=0;
-				$displayed_applets_ltr_hash{$_}=$applets_ltr_hash{$_};
-			}	else { 
-				# we're not displaying small_applets one at a time
-				#because it would be hard to tell which one you're seeing
-				$displayed_applets_priority_array[0]="too_small";
-				$displayed_applets_ltr_array[$applets_ltr_hash{$_}]="too_small";
-				$displayed_applets_priority_hash{$_}=0;
-				$applets_ltr_hash{$_}="too small";
-				last;
-			}
-		} else { # ok so we're NOT on the first thingy displayed
-			if ($_ eq "small_applets") {
-				$displayed_applets_max_width += $number_of_small_applets;
-			} else {
-				$displayed_applets_max_width += $APPLETS_MAX_WIDTHS{$_};
-			}
-			# figure out divider width. is time next to date?
-			if ($_ eq "date") {
-				# oof, inserting a new applet could add a short divider
-				# on either side. 
-				# need to check whether the nonempty 
-				# ok you got this. just check ltr indices between them?
-				unless ($applets_ltr_hash{"time"}==undef) {
-					for (my $k=lesser($applets_ltr_hash{"time"},$applets_ltr_hash{"date"}); $k<=greater($applets_ltr_hash{"time"},$applets_ltr_hash{"date"})
-			}
-		if ($priority_index>0) {
-		 and $applets_ltr_hash{$_} 
+sub addApplet { #arg is priority index
+	my $applet_to_add=$applets_priority_array[$_[0]];
+	print ("Applet to add: $applet_to_add\n");
+	my $applet_to_left=$applets_rtl_list{$applet_to_add};
+	my $applet_two_to_left=$applets_rtl_list{$applet_to_left};
+ 	if ( $_[0] == 0 ) {
+		$displayed_applets_ltr_list{"head"}=$applet_to_add;
+		$displayed_applets_ltr_list{$applet_to_add}="tail";
+	} else {
+		my $i=0;
+		while ($i<50 and $applet_to_left ne "tail" and
+			not exists $displayed_applets_ltr_list{$applet_to_left} ) {
+			$applet_to_left=$applet_two_to_left;
+			$applet_two_to_left=$applets_rtl_list{$applet_to_left};
+			$i++; #just to avoid infinite loops
 		}
-	
+		if ($applet_to_left eq "tail") {
+			$displayed_applets_ltr_list{$applet_to_add}=$displayed_applets_ltr_list{"head"};
+			$displayed_applets_ltr_list{"head"}=$applet_to_add;
+		} else {
+			$displayed_applets_ltr_list{$applet_to_add}=$displayed_applets_ltr_list{$applet_to_left};
+			$displayed_applets_ltr_list{$applet_to_left}=$applet_to_add;
+		}
+	}	
+}	
+
+for (my $i=0; $i<5; $i++) {
+	addApplet($i);
 }
 
+# for debugging:
+my $s="head";
+while ($displayed_applets_ltr_list{$s} ne "tail") {
+	print ("$displayed_applets_ltr_list{$s} ");
+	$s=$displayed_applets_ltr_list{$s};
+}
+print ("\n");
 
-# i am fully aware of max and min, but
-# it would be neat not to include any modules at all
-# also, I do not give a fuck about if the two
-# numbers are equal.
+my @displayed_applets_with_dividers;
+#structure will looks like this:
+# [0] small_applets
+# [1] [space]|[space]
+# [2] time
+# [3] [space]
+# [4] date
+# [5] [space]|[space]
+# [6] vpn
+# [7] [space]|[space]
+# [8] volume
+
+sub addDividers {
+	my $current_applet=$displayed_applets_ltr_list{"head"};
+	print ("current applet: $current_applet\n");
+	my $next_applet=$displayed_applets_ltr_list{$current_applet};
+	my $i=0;
+	my $k=0; # this one is for preventing infinite loops
 	
-sub lesser {
-	if ($_[0] < $_[1]) {
-		return ($_[0]);
-	} else {
-		return ($_[1]);
+	while ($current_applet ne "tail" and $k<50) {
+		$displayed_applets_with_dividers[$i] = $current_applet;
+		$i++;
+		if ($next_applet ne "tail") {
+			if (($current_applet eq "date" or $current_applet eq "time" or $current_applet eq "small_applets")
+				and ($next_applet eq "date" or $next_applet eq "time" or $next_applet eq "small_applets")) {
+				$displayed_applets_with_dividers[$i]=$SMALL_DIVIDER;
+				$current_applet=$displayed_applets_ltr_list{$current_applet};
+				$next_applet=$displayed_applets_ltr_list{$current_applet};
+			} else {
+				$displayed_applets_with_dividers[$i]=$BIG_DIVIDER;
+				$current_applet=$displayed_applets_ltr_list{$current_applet};
+				$next_applet=$displayed_applets_ltr_list{$current_applet};
+			}
+			$i++;
+		} else {
+			$current_applet="tail";
+		}
+		$k++;
 	}
 }
 
-sub greater {
-	if ($_[0] > $_[1]) {
-		return ($_[0]);
-	} else {
-		return ($_[1]);
-	}
+
+addDividers();
+
+for (my $i=0; $i<@displayed_applets_with_dividers; $i++) {
+	print ($displayed_applets_with_dividers[$i]);
 }
-
-showApplets();
-
-#while(1) {
-#	sleep($settings{"poll_delay"});
-#	showApplets();
-#}
-
-
+print ("\n");

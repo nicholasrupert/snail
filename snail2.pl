@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+my @errors;
 
 # Perl note: backticks use /bin/sh
 # /bin/sh is just a shortcut for ksh, bash or whatever
@@ -17,8 +18,8 @@ my $ACCEPTABLE_SHELLS = "bash|ksh|csh";
 my $shell;
 ($shell)=(`echo \$SHELL`=~/($ACCEPTABLE_SHELLS)/);
 unless ($shell=~/$ACCEPTABLE_SHELLS/) {
-	print ("Error: shell $shell not recognized\n");
-	exit (0);
+	push (@errors,  "Error: shell $shell not recognized\n");
+	exit (1);
 }
 print ("Shell: $shell\n");
 
@@ -90,16 +91,15 @@ print("Config file: $config_file\n");
 #	Read and parse the config file					#
 #################################################
 
-my @applets_rtl_array;
-my @applets_priority_array;
-my %applets_rtl_hash;
-my %applets_priority_hash;
-my @small_applets;
-my %settings;
+my @applets_rtl_array;   #stores applets in rtl order
+my @applets_priority_array; # order applets appear/disappear with size changes
+my %applets_rtl_hash;	# inverse of applets_rtl_array
+my %applets_priority_hash; #inverse of applets_priority_array
+my @small_applets; # just little color blobs in right or left side
+my %settings; 
 my %colors;
 
 my @ACCEPTABLE_APPLETS=(
-	"small_applets",
 	"time",
 	"date",
 	"battery_ac",
@@ -112,7 +112,7 @@ my @ACCEPTABLE_APPLETS=(
 
 my @ACCEPTABLE_SMALL_APPLETS=(
 	"battery_ac_small",
-	"volume_small",
+	"mute_small",
 	"cpu_temp_small",
 	"wifi_small",
 	"vpn_small"
@@ -122,7 +122,7 @@ my @ACCEPTABLE_SETTINGS=(
 	"poll_delay",
 	"date_format",
 	"time_format",
-	"autohide_small_applets"
+	"small_applets"
 );
 
 my @ACCEPTABLE_COLOR_CLASSES=(
@@ -170,7 +170,7 @@ my @ACCEPTABLE_COLOR_NAMES= (
 	"poll_delay" => ".5",
 	"small_applets" => "1",
 	"date_format" => "\%Y-\%m-\%d",
-	"time_format" => "24h",
+	"time_format" => "\%H:\%M",
 	"alignment" => "right"
 );
 
@@ -213,14 +213,16 @@ my %ASCII_COLORS = (
 	"DIVIDER" => $ASCII_COLORS{"LIGHT_BLUE"},
 	"BAD" => $ASCII_COLORS{"LIGHT_RED"},
 	"GOOD" => $ASCII_COLORS{"GREEN"},
-	"VERY_BAD" => "BLINK", # its special
 	"NORMAL" => $ASCII_COLORS{"LIGHT_GREY"},
 	"BLINK_1" => $ASCII_COLORS{"RED"},
-	"BLINK_2" => $ASCII_COLORS{"YELLOW"}
+	"BLINK_2" => $ASCII_COLORS{"YELLOW"},
+	"VERY_BAD" => "BLINK" # its special
 );
 
 my $number_of_small_applets=0;
 my $date_and_time_adjacent=0;
+my $SMALL_APPLETS_WIDTH=1;
+my $DIVIDER_WIDTH=3; # space|space
 
 # now read the config file, check inputs for sanity, and set the configs
 
@@ -314,7 +316,7 @@ unless ($config_file eq "DEFAULTS") {
 		"vpn",
 		"volume"		
 	);
-	%applets_rtl_hash = (
+	%applets_rtl_hash = ( # check this against the array before changing
 		"small_applets" => 0,
 		"time" => 1,
 		"date" => 2,
@@ -336,7 +338,7 @@ unless ($config_file eq "DEFAULTS") {
 		"cpu_temp",
 		"fan_speed"
 	);
-	%applets_priority_hash = (
+	%applets_priority_hash = ( # check this against the array before changing
 		"small_applets" => 0,
 		"time" => 1,
 		"date" => 2,
@@ -347,6 +349,8 @@ unless ($config_file eq "DEFAULTS") {
 		"cpu_temp" => 7,
 		"fan_speed" => 8
 	);
+	$number_of_small_applets=0;
+	$date_and_time_adjacent=1;
 	# default special, flag, and color settings already set
 }
 
@@ -382,38 +386,46 @@ my %APPLETS_MAX_WIDTHS = (		# all small applets have width 1
 print ("applets max width: ".$APPLETS_MAX_WIDTHS{"time"}."\n");
 
 
-my $SMALL_APPLETS_WIDTH=1;
-
-my $DIVIDER_WIDTH=3; # space|space
-
 sub showApplets {
+	# reads the terminal size
+	# figures out which applets in the priority list will fit with dividers
+	# which requires simultaneously checking rtl order to decide
+	# which divider will be displayed. this is hard to figure out for me
+	# idk about you
 	
 	my $TERMINAL_WIDTH=`tput cols`;
+	
+	# only do stuff if the column width is -1 (to force) or changed
+	
+	if ($TERMINAL_WIDTH == $_ && $_!=-1) {
+		return ();
+	}		
+	
 	print ("Terminal width: $TERMINAL_WIDTH");
 	my $displayed_applets_max_width=0;
 	
 	# I suspect for the display we don't need a priority array/hash, just rtl
-	my @displayed_applets_priority_array; #in priority order, not rtl order
-	my @displayed_applets_rtl_array; # in rtl order, only containing applets actually displayed
-	
-	my %displayed_applets_priority_hash;
-	my %displayed_apprets_rtl_hash;
-	my $leading_spaces=0;
+	my @displayed_applets_priority_array; 
+	my @displayed_applets_rtl_array;
+	my %displayed_applets_priority_hash; #inverse of the array
+	my %displayed_apprets_rtl_hash; # inverse of the array
+	my $leading_spaces=0; # this will format everything later bc we will remove applets to fit, 
+									but the applets aren't width 1
 		
-	my $DIVIDER = " | ";
-	my $DATE_TIME_DIVIDER = " ";
+	my $DIVIDER = " | "; # could be worth letting the user set this idk
+	my $SMALL_DIVIDER = " ";
 
 	# this gets the total length of applets (each at max width)
 	# that would fit in the terminal
 	
-	my $number_of_small_applets=@small_applets;
+	$number_of_small_applets=@small_applets;
 	
 	my $priority_index=0;
 	my $rtl_index=0;
-	# get number of small applets. they're treated as a bloc.
 		
 	foreach (@applets_priority_array) {
 		# if it's the first applet in priority, no divider check needed.
+		# each time we 
 		if ($priority_index==0) {
 			if ($_ eq "small_applets") {
 				$displayed_applets_max_width = $number_of_small_applets;
