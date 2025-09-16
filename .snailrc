@@ -1,16 +1,15 @@
-# snail config file
-
-# for a complete listing of options,
-# and a complete listing of defaults,
-# see snailrc.example
+# snail config file example
 
 # this doc uses anticomments
-# anything not prepended by ^ & % $ is ignored
+# anything not prepended by ^ & ! * $ is ignored
 see? this line doesn't matter
 # the section divisions don't matter either
 # you could scramble everything up if you want
 # extra whitespace in a line will fuck it up 
 # until I fix that
+
+# snail looks for ~/.snailrc, then ~/.config/snailrc
+# then /etc/snailrc
 
 	############################
 	# right-to-left ordering	#
@@ -18,14 +17,27 @@ see? this line doesn't matter
 	# prepend with a ^			#
 	############################
 
-^battery_ac_small
-^wifi_small
-^vpn_small
-^date
+##### complete list ####
+# small_applets
+# date
+# time
+# ac_only
+# battery_ac
+# volume
+# cpu_temp
+# ram
+# swap
+# fan_speed
+# vpn
+# wifi
+# ping
+
+##### the list #####
+
 ^time
+^date
 ^battery_ac
 ^wifi
-^vpn
 ^volume
 
 	#################################################
@@ -39,34 +51,73 @@ see? this line doesn't matter
 	# will not be displayed.								#
 	# prepend with &											#
 	#################################################
+
+##### complete list #####
+# small_applets
+# date
+# time
+# battery_only
+# ac_only
+# battery_ac
+# volume
+# cpu_temp
+# ram
+# swap
+# fan_speed
+# vpn
+# wifi
+# ping
+
+#### the list ####
 	
-&battery_ac_small
-&wifi_small
-&vpn_small
 &time
 &battery_ac
-&volume
-&vpn
-&wifi
 &date
+&volume
+&wifi
 
-	######################
-	# special flags		#
-	# turns settings on	#
-	# all default to off	#
-	######################
+	##################################
+	# small apps							#
+	# makes a teeny tiny version of	#
+	# the apps you pick.					#
+	# basically like stoplights.		#
+	# prepend with *						#
+	##################################
 
-!simultaneous_big_small_applets
-!small_applets_all_same_priority
+##### complete list #####	
+
+# battery_ac_small
+# volume_small
+# cpu_temp_small
+# vpn_small
+# wifi_small
+
+#### sample list ####
+
+*battery_ac_small
+*volume_small
+*cpu_temp_small
+*wifi_small
+*vpn_small
 
 	############################
 	# special settings			#
 	# prepend with %				#
 	# omitted goes to default	#
-	# %setting_name=[number]	#
+	# !setting_name=[number]	#
 	############################
+	
+##### complete list ######
+# autohide_small_applets=n (1 or 0)
+# poll_delay=n (any number in seconds)
+# date_format=%Y-%m-%d (or whatever. uses date shell format)
+# time_format=%H-%M (or whatever. uses date shell format)
 
-%poll_delay=1
+##### sample list #####
+
+!poll_delay=.5
+!date_format=%y-%m-%d
+!indent=1
 	
    ############################
    # color settings				#
@@ -77,16 +128,58 @@ see? this line doesn't matter
    # $COLOR_CLASS=COLOR_NAME	#
    ############################
 
+#### complete list of COLOR_CLASS #####
+# LABEL
+# NUMBER
+# VOLUME
+# MUTE
+# TIME
+# COLON
+# UNITS
+# DATE
+# DATE_DIVIDER
+# DIVIDER
+# BAD
+# GOOD
+# NORMAL
+# BLINK_1
+# BLINK_2
+# you can't actually set BLINK by itself
+
+#### complete list of COLOR_NAMES #####
+
+# BLACK
+# RED
+# GREEN
+# YELLOW
+# BLUE
+# MAGENTA
+# CYAN
+# LIGHT_GREY
+# GREY
+# LIGHT_RED
+# LIGHT_GREEN
+# LIGHT_YELLOW
+# LIGHT_BLUE
+# LIGHT_MAGENTA
+# LIGHT_CYAN
+# WHITE
+# BLINK
+
+##### sample list #####
+
 $LABEL=LIGHT_GREY
 $NUMBER=LIGHT_CYAN
 $VOLUME=LIGHT_CYAN
 $MUTE=GREEN
 $TIME=YELLOW
 $COLON=LIGHT_GREY
-$SYMBOL=GREY
-$DATE=CYAN
-$DATE=GREY
+$UNITS=LIGHT_GREY
+$DATE=RED
+$SMALL_DIVIDER=GREY
 $DIVIDER=LIGHT_BLUE
 $BAD=LIGHT_RED
 $GOOD=GREEN
 $NORMAL=LIGHT_GREY
+$BLINK_1=RED
+$BLINK_2=YELLOW
