@@ -1,7 +1,7 @@
 # snail config file example
 
 # this doc uses anticomments
-# anything not prepended by ^ & % $ is ignored
+# anything not prepended by ^ & ! * $ is ignored
 see? this line doesn't matter
 # the section divisions don't matter either
 # you could scramble everything up if you want
@@ -18,36 +18,26 @@ see? this line doesn't matter
 	############################
 
 ##### complete list ####
+# small_applets
 # date
 # time
-# battery_only
 # ac_only
 # battery_ac
-# battery_only_small
-# ac_only_small
-# battery_ac_small
 # volume
-# volume_small
 # cpu_temp
-# cpu_temp_small
 # ram
 # swap
 # fan_speed
 # vpn
-# vpn_small
 # wifi
-# wifi_small
 # ping
-# ping_small
 
 ##### sample list #####
 
-^battery_ac_small
-^wifi_small
-^vpn_small
+^small_applets
+^battery_ac
 ^date
 ^time
-^battery_ac
 ^wifi
 ^vpn
 ^volume
@@ -65,33 +55,24 @@ see? this line doesn't matter
 	#################################################
 
 ##### complete list #####
+# small_applets
 # date
 # time
 # battery_only
 # ac_only
 # battery_ac
-# battery_only_small
-# ac_only_small
-# battery_ac_small
 # volume
-# volume_small
 # cpu_temp
-# cpu_temp_small
 # ram
 # swap
 # fan_speed
 # vpn
-# vpn_small
 # wifi
-# wifi_small
 # ping
-# ping_small
 
 #### sample list ####
 	
-&battery_ac_small
-&wifi_small
-&vpn_small
+&small_applets
 &time
 &battery_ac
 &volume
@@ -99,28 +80,46 @@ see? this line doesn't matter
 &wifi
 &date
 
-	######################
-	# special flags		#
-	# turns settings on	#
-	# all default to off	#
-	######################
+	##################################
+	# small apps							#
+	# makes a teeny tiny version of	#
+	# the apps you pick.					#
+	# basically like stoplights.		#
+	# prepend with *						#
+	##################################
 
-!simultaneous_big_small_applets
-!small_applets_all_same_priority
+##### complete list #####	
+
+# battery_ac_small
+# volume_small
+# cpu_temp_small
+# vpn_small
+# wifi_small
+
+#### sample list ####
+
+*battery_ac_small
+*volume_small
+*cpu_temp_small
+*wifi_small
+*vpn_small
 
 	############################
 	# special settings			#
 	# prepend with %				#
 	# omitted goes to default	#
-	# %setting_name=[number]	#
+	# !setting_name=[number]	#
 	############################
 	
 ##### complete list ######
-# poll_delay=n
+# poll_delay=n (any number in seconds)
+# date_format=%Y-%m-%d (or whatever. uses date shell format)
+# time_format=%H-%M (or whatever. uses date shell format)
+# alignment=left (or right or center, defaults right)
 
 ##### sample list #####
 
-%poll_delay=1
+!poll_delay=.5
 	
    ############################
    # color settings				#
@@ -138,13 +137,16 @@ see? this line doesn't matter
 # MUTE
 # IME
 # COLON
-# SYMBOL
+# UNITS
 # DATE
 # DATE_DIVIDER
 # DIVIDER
 # BAD
 # GOOD
 # NORMAL
+# BLINK_1
+# BLINK_2
+# you can't actually set BLINK by itself
 
 #### complete list of COLOR_NAMES #####
 
@@ -164,6 +166,7 @@ see? this line doesn't matter
 # LIGHT_MAGENTA
 # LIGHT_CYAN
 # WHITE
+# BLINK
 
 ##### sample list #####
 
@@ -173,10 +176,13 @@ $VOLUME=LIGHT_CYAN
 $MUTE=GREEN
 $TIME=YELLOW
 $COLON=LIGHT_GREY
-$SYMBOL=GREY
+$UNITS=GREY
 $DATE=CYAN
 $DATE_DIVIDER=GREY
 $DIVIDER=LIGHT_BLUE
 $BAD=LIGHT_RED
 $GOOD=GREEN
+$VERY_BAD=BLINK
 $NORMAL=LIGHT_GREY
+$BLINK_1=RED
+$BLINK_2=YELLOW
