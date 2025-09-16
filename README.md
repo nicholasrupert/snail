@@ -10,3 +10,6 @@ Snail is a tray application that runs in a console, intended to work with a manu
 
 # for configuration help, see snailrc.example
 
+
+
+So far, audio volume, wifi status, date, time, and battery_ac work on OpenBSD.
