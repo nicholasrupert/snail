@@ -1,15 +1,6 @@
 
 figure out how to figure out what terminal emulator is being used
 
-add flag for 12 hour time
-
-maybe add option for date format
-
-make the parsing of the config file ignore white space
-
-make the thing
-
-
 ok so here is the behavior I want.
 
 If you have *no* small applets, then it figures out how wide
@@ -26,12 +17,16 @@ I think that small_applets should be treated as one applet,
 and you use flags or settings or even its own category to
 say which small applets you want.
 
-Ok so we have the arrays and hashes and we can check in either direction
+---
 
-run through the priority array
+So far, audio volume, wifi status, date, time, and battery_ac work on OpenBSD.
 
-the first one is free
+I am trying to make it update only when something changes or when the screen gets resized.
+It mostly works, except sometimes when there is no change of info *and* the screen gets shrunk.
 
-then add a full divider length and the next applet
 
-then check whether there is a time next to a date
+---
+
+Need to let the user pick date divider colors, need to make the colon color in the time work.
+
+Would be nice if the user could separately decide when the year appears in the date.
