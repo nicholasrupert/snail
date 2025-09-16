@@ -1,7 +1,10 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 use strict;
 use warnings;
+
+#use Term::ReadKey;
+
 my @errors;
 
 # Perl note: backticks use /bin/sh
@@ -53,6 +56,8 @@ if ($os eq "OpenBSD") {
 #print ("Sound mixer: $sound_mixer\n");
 
 #get VPN type
+# this check should really get moved to when we read the applet list
+# because probably most people don't even use or care about vpn
 
 my @ACCEPTABLE_VPNS=("mullvad", "wg");
 my $vpn="NONE";
@@ -126,7 +131,10 @@ my @ACCEPTABLE_SETTINGS=(
 #	"small_applets",
 	"wifi_interface",
 	"indent",
-	"cursor"
+	"cursor",
+	"snail_position",
+	"snail_logo",
+	"alignment"
 );
 
 my @ACCEPTABLE_COLOR_CLASSES=(
@@ -147,6 +155,7 @@ my @ACCEPTABLE_COLOR_CLASSES=(
 	"NORMAL",
 	"BLINK_1",
 	"BLINK_2",
+	"BACKGROUND"
 );
 
 my @ACCEPTABLE_COLOR_NAMES= (
@@ -179,61 +188,64 @@ my @ACCEPTABLE_COLOR_NAMES= (
 	"alignment" => "right",
 	"wifi_interface" => "iwx0",
 	"indent" => "1", #indent less than one totally fucks everything if right-aligned
-	"cursor" => "left"
+	"cursor" => "left",
+	"snail_position" => "left",
+	"snail_logo" => "1"
 );
 
 
 
-# hard coded ascii values for basic color names
-# the ascii values are hard coded because the alacritty theme or
-# whatever will change the hex values of these ascii values anyway
+# hard coded ANSI values for basic color names
+# the ANSI values are hard coded because the alacritty theme or
+# whatever will change the hex values of these ANSI values anyway
 
-my %ASCII_COLORS = (
-	"BLACK" => "\e[1;30m",
-	"RED" => "\e[1;31m",
-	"GREEN" => "\e[1;32m",
-	"YELLOW" => "\e[1;33m",
-	"BLUE" => "\e[1;34m",
-	"MAGENTA" => "\e[1;35m",
-	"CYAN" => "\e[1;36m",
-	"LIGHT_GREY" => "\e[1;37m",
-	"GREY" => "\e[1;90m",
-	"LIGHT_RED" => "\e[1;91m",
-	"LIGHT_GREEN" => "\e[1;92m",
-	"LIGHT_YELLOW" => "\e[1;93m",
-	"LIGHT_BLUE" => "\e[1;94m",
-	"LIGHT_MAGENTA" => "\e[1;95m",
-	"LIGHT_CYAN" => "\e[1;96m",
-	"WHITE" => "\e[1;97m"
+my %ANSI_COLORS = (
+	"BLACK" => "\e[1;30;40m",
+	"RED" => "\e[1;31;40m",
+	"GREEN" => "\e[1;32;40m",
+	"YELLOW" => "\e[1;33;40m",
+	"BLUE" => "\e[1;34;40m",
+	"MAGENTA" => "\e[1;35;40m",
+	"CYAN" => "\e[1;36;40m",
+	"LIGHT_GREY" => "\e[1;37;40m",
+	"GREY" => "\e[1;90;40m",
+	"LIGHT_RED" => "\e[1;91;40m",
+	"LIGHT_GREEN" => "\e[1;92;40m",
+	"LIGHT_YELLOW" => "\e[1;93;40m",
+	"LIGHT_BLUE" => "\e[1;94;40m",
+	"LIGHT_MAGENTA" => "\e[1;95;40m",
+	"LIGHT_CYAN" => "\e[1;96;40m",
+	"WHITE" => "\e[1;97;40m"
 );
 
 # default colors get set here so that we can be sure all get set
 
 my %COLORS = (
-	"LABEL" => $ASCII_COLORS{"LIGHT_GREY"},
-	"NUMBER" => $ASCII_COLORS{"LIGHT_CYAN"},
-	"VOLUME" => $ASCII_COLORS{"LIGHT_CYAN"},
-	"MUTE" => $ASCII_COLORS{"GREEN"},
-	"TIME" => $ASCII_COLORS{"YELLOW"},
-	"COLON" => $ASCII_COLORS{"LIGHT_GREY"},
-	"DASH" => $ASCII_COLORS{"LIGHT_GREY"},
-	"UNITS" => $ASCII_COLORS{"LIGHT_GREY"},
-	"DATE" => $ASCII_COLORS{"CYAN"},
-	"SMALL_DIVIDER" => $ASCII_COLORS{"GREY"},
-	"DIVIDER" => $ASCII_COLORS{"LIGHT_BLUE"},
-	"BAD" => $ASCII_COLORS{"LIGHT_RED"},
-	"GOOD" => $ASCII_COLORS{"GREEN"},
-	"NORMAL" => $ASCII_COLORS{"LIGHT_GREY"},
-	"BLINK_1" => $ASCII_COLORS{"RED"},
-	"BLINK_2" => $ASCII_COLORS{"YELLOW"},
-	"VERY_BAD" => "BLINK" # its special
+	"LABEL" => $ANSI_COLORS{"LIGHT_GREY"},
+	"NUMBER" => $ANSI_COLORS{"LIGHT_CYAN"},
+	"VOLUME" => $ANSI_COLORS{"LIGHT_CYAN"},
+	"MUTE" => $ANSI_COLORS{"GREEN"},
+	"TIME" => $ANSI_COLORS{"YELLOW"},
+	"COLON" => $ANSI_COLORS{"LIGHT_GREY"},
+	"DASH" => $ANSI_COLORS{"LIGHT_GREY"},
+	"UNITS" => $ANSI_COLORS{"LIGHT_GREY"},
+	"DATE" => $ANSI_COLORS{"CYAN"},
+	"SMALL_DIVIDER" => $ANSI_COLORS{"GREY"},
+	"DIVIDER" => $ANSI_COLORS{"LIGHT_BLUE"},
+	"BAD" => $ANSI_COLORS{"LIGHT_RED"},
+	"GOOD" => $ANSI_COLORS{"GREEN"},
+	"NORMAL" => $ANSI_COLORS{"LIGHT_GREY"},
+	"BLINK_1" => $ANSI_COLORS{"RED"},
+	"BLINK_2" => $ANSI_COLORS{"YELLOW"},
+	"VERY_BAD" => "BLINK", # its special
+	"BACKGROUND" => $ANSI_COLORS{"BLACK"}
 );
 
 my %APPLETS_MAX_WIDTHS = (		# all small applets have width 1			
 	"time" => 5,					# 23:59
 	"date" => 10,					# 2025-12-31
 	"battery_ac" => 7,			# bat 39% 
-	"fan_speed" => 7,				# who knows maybe fan 100
+	"fan_speed" => 13,				# fan 10000 rpm
 	"cpu_temp" => 9,				# CPU 100*C
 	"wifi" => 9,					# wifi up / wifi down
 	"vpn" => 8,						# vpn bg / vpn down	
@@ -257,6 +269,8 @@ my %display_LTR_list = ("head" => "tail");
 my @display_divided_LTR_array;
 my @small_applets;
 my $PREVIOUS_DISPLAY_STRING_CF="init";
+my $PREVIOUS_TERMINAL_HEIGHT=getTerminalHeight();
+my $too_small_to_show_applets_flag=0;
 
 # now read the config file, check inputs for sanity, and set the configs
 
@@ -300,7 +314,9 @@ unless ($config_file eq "DEFAULTS") {
 		}
 
 		# anticomment character for special settings is !
-		# form is %setting=number
+		# form is !setting=number
+		
+		#kinda want to change this to % but not now
 		elsif ($_=~/^!(.*)=/) {
 			unless (grep { $1 eq $_ } @ACCEPTABLE_SETTINGS) {
 				die ("Error: special setting $1 not recognized\n");
@@ -322,7 +338,7 @@ unless ($config_file eq "DEFAULTS") {
 			
 			($color_name) = ($_=~/=(.*)/);
 			if (grep { $color_name eq $_ } @ACCEPTABLE_COLOR_NAMES) {
-				$COLORS{$color_class}=$ASCII_COLORS{$color_name};
+				$COLORS{$color_class}=$ANSI_COLORS{$color_name};
 				#print ("Color class $color_class set: $color_name\n");
 			} else {
 				die ("Error: color name $1 not recognized\n");
@@ -333,6 +349,7 @@ unless ($config_file eq "DEFAULTS") {
 		$number_of_small_applets=$small_applets_index;
 		$APPLETS_MAX_WIDTHS{"small_applets"} = $number_of_small_applets;
 	}
+	close ($config_readline);
 } else {  # default settings
 	%RTL_list = ( # check this against the array before changing
 		"head"=>"small_applets",
@@ -464,6 +481,10 @@ sub getTerminalWidth {
 	return (`tput cols`);
 }
 
+sub getTerminalHeight {
+	return (`tput lines`);
+}
+
 sub setAppletsMaxWidths {
 	my $date_format=$settings{"date_format"};
 	my $date_max_width = length (`date +$date_format`);
@@ -501,24 +522,54 @@ sub setAppletsToDisplay () {
 
 sub getDateNFCF {
 	my $date_format=$settings{"date_format"};
-	my $nf = `date +$date_format`;
+	my $raw_date = `date +$date_format`;
+	my $nf="";
+	my $cf="";
 #	#print ("Date setting: $date_format\n");
 #	#print ("Date: $nf\n");
-	chomp ($nf);
-	if (length($nf) > $APPLETS_MAX_WIDTHS{"date"}) {
+	chomp ($raw_date);
+	if (length($raw_date) > $APPLETS_MAX_WIDTHS{"date"}) {
 		die ("Error: date string too long.\n");
 	}
-	my $cf = $COLORS{"DATE"}.$nf;
+	my ($date_div_char)=($raw_date=~/^\d+(.)/);
+	my @date_array = split (/$date_div_char/,$raw_date);
+
+	# add the first date term separately bc no preceding divider
+	if (exists $date_array[0]) {
+		$nf .= $date_array[0];
+		$cf .= $COLORS{"DATE"}.$date_array[0];
+	}
+	for (my $i=1; $i<@date_array; $i++) {
+		$nf .= $date_div_char.$date_array[$i];
+		$cf .= $COLORS{"DASH"}.$date_div_char;
+		$cf .= $COLORS{"DATE"}.$date_array[$i];
+	}
+
 	return ($nf, $cf); #returns both. we need unformatted for a character count at the end
 }
 
 sub getTimeNFCF {
-	my $nf = `date +$settings{"time_format"}`;
-	chomp ($nf);
-	if (length($nf) > $APPLETS_MAX_WIDTHS{"date"}) {
+	my $raw_time = `date +$settings{"time_format"}`;
+	my $nf="";
+	my $cf="";
+	chomp ($raw_time);
+	if (length($raw_time) > $APPLETS_MAX_WIDTHS{"time"}) {
 		die ("Error: time string too long.\n");
 	}
-	my $cf = $COLORS{"TIME"}.$nf;
+	my ($time_div_char) = ($raw_time=~/^\d+(.)/);
+	my @time_array = split (/$time_div_char/, $raw_time);
+	
+	# add first time term separately bc no preceding divider
+	if (exists $time_array[0]) {
+		$nf .= $time_array[0];
+		$cf .= $COLORS{"TIME"}.$time_array[0];
+	}
+	for (my $i=1; $i<@time_array; $i++) {
+		$nf .= $time_div_char.$time_array[$i];
+		$cf .= $COLORS{"COLON"}.$time_div_char;
+		$cf .= $COLORS{"TIME"}.$time_array[$i];
+	}
+	
 	return ($nf, $cf);
 }
 
@@ -632,6 +683,73 @@ sub getBatNFCF {
 	return ($nf, $cf);
 }
 
+sub getVPN_NFCF { ##################################### Doesn't work at all yet
+	my $nf="";
+	my $cf="";
+	my $raw_vpn_output="";
+	if ($vpn eq "wg") {
+		$raw_vpn_output=`wg show wg0`;
+		
+	}
+	return ($nf,$cf);
+}
+
+sub getFanSpeedNFCF {
+	my $nf="";
+	my $cf="";
+	my $rpms="";
+	if ($os eq "OpenBSD") {
+		my @raw_fan_output=split(/\n/,`sysctl hw.sensors`);
+		foreach (@raw_fan_output) {
+			if ($_=~/.*\.fan0=\d+.*RPM/) {
+				($rpms) = ($_=~/.*\.fan0=(\d+)/);
+				$nf .= "fan ".$rpms." rpm";
+				$cf .= $COLORS{"LABEL"}."fan ";
+				$cf .= $COLORS{"NUMBER"}.$rpms;
+				$cf .= $COLORS{"UNITS"}." rpm";
+				last;
+			}
+		}
+		if ($nf eq "") {
+			$nf .= "fan err";
+			$cf .= $COLORS{"LABEL"}."fan ";
+			$cf .= $COLORS{"BAD"}." err";
+		}
+	}
+	return ($nf, $cf);
+}
+
+sub getCPUTempNFCF {
+	my $nf="";
+	my $cf="";
+	my $cpu_temp="";
+	my $c_or_f="C";
+	my $DEGREE_SYMBOL="\xc2\xb0";
+	if ($os eq "OpenBSD") {
+		my @raw_cpu_output=split(/\n/,`sysctl hw.sensors`);
+		foreach (@raw_cpu_output) {
+			if ($_=~/.*degF/) {
+				$c_or_f="F";
+			}
+			if ($_=~/.*\.cpu0.temp0=\d+/) {
+				($cpu_temp) = ($_=~/.*\.cpu0.temp0=(\d+)/);
+				$nf .= "cpu ".$cpu_temp.$DEGREE_SYMBOL.$c_or_f;
+				$cf .= $COLORS{"LABEL"}."cpu ";
+				$cf .= $COLORS{"NUMBER"}.$cpu_temp;
+				$cf .= $COLORS{"UNITS"}.$DEGREE_SYMBOL.$c_or_f;
+				last;
+			}
+			if ($nf eq "") {
+				$nf .= "fan err";
+				$cf .= $COLORS{"LABEL"}."cpu ";
+				$cf .= $COLORS{"BAD"}." err";
+			}
+		}
+	}
+	return ($nf, $cf);
+}	
+			
+
 sub getDisplayStringsNFCF() { #mostly for debugging at this point
 	setAppletsToDisplay();
 	
@@ -663,12 +781,22 @@ sub getDisplayStringsNFCF() { #mostly for debugging at this point
 			my ($batnf, $batcf) = getBatNFCF();
 			$dscf .= $batcf;
 			$dsnf .= $batnf;
+		} elsif ($display_divided_LTR_array[$i] eq "fan_speed") {
+			my ($fannf, $fancf) = getFanSpeedNFCF();
+			$dscf .= $fancf;
+			$dsnf .= $fannf;
+		} elsif ($display_divided_LTR_array[$i] eq "cpu_temp") {
+			my ($cpunf, $cpucf) = getCPUTempNFCF();
+			$dscf .= $cpucf;
+			$dsnf .= $cpunf;
+		} elsif ($display_divided_LTR_array[$i] eq "tail") {
+			$too_small_to_show_applets_flag=1;
 		} else {
 			die ("Error: cannot print applet $display_divided_LTR_array[$i]\n");
 		}
-		unless ($display_divided_LTR_array[$i+1] eq "tail" 
-			or $display_divided_LTR_array[$i+1] eq ""
-				or !exists($display_divided_LTR_array[$i+1])) {
+		if (exists $display_divided_LTR_array[$i+1] and 
+				$display_divided_LTR_array[$i+1] ne "tail" 
+					and $display_divided_LTR_array[$i+1] ne "") {
 			$dscf .= $COLORS{"DIVIDER"};
 			$dscf .= $DIVIDERS{$display_divided_LTR_array[$i+1]};
 			$dsnf .= $DIVIDERS{$display_divided_LTR_array[$i+1]};
@@ -691,9 +819,10 @@ sub getLeadingSpaces { # takes display string with no formatting as an arg
 	my $terminal_width = getTerminalWidth();
 	my $leading_spaces="";
 	my $indent=$settings{"indent"};
-	if ( $length > $terminal_width+$indent) {
-		die ("Error: display string width $length, terminal width only $terminal_width.\n");
-	} elsif ($settings{"alignment"} eq "left") {
+	#if ( $length > $terminal_width+$indent) {
+	#	die ("Error: display string width $length, terminal width only $terminal_width.\n");
+	#} els
+	if ($settings{"alignment"} eq "left") {
 		$leading_spaces = ' 'x $indent;
 	} elsif ($settings{"alignment"} eq "center") {
 		my $n = ($terminal_width-$length)/2;
@@ -714,20 +843,83 @@ sub getLeadingSpaces { # takes display string with no formatting as an arg
 	return ($leading_spaces);
 }
 
+sub getFirstPriorityAppletMaxWidth {
+	if (exists $priority_array[0]) {
+		return ($APPLETS_MAX_WIDTHS{$priority_array[0]});
+	} else {
+		die ("First priority applet not found.\n");
+	}
+}
 
 sub printApplets {
 	my ($dsnf, $dscf) = getDisplayStringsNFCF();
-	my $trailing_spaces = ' ' x $settings{"indent"};
-	$dscf=$dscf.$trailing_spaces;
-	if ($dscf ne $PREVIOUS_DISPLAY_STRING_CF) {
-		if ($settings{"cursor"} eq "left") {
-			print ("$dscf\r");
-		} else { # making this the default
+	#my $trailing_spaces = ' ' x $settings{"indent"};
+	#$dscf=$dscf.$trailing_spaces;
+
+	# if too small for a single applet, print empty spaces
+	if (getTerminalWidth() < getFirstPriorityAppletMaxWidth()+2+$settings{"indent"}) {
+	#	my $empty_string = ' ' x getTerminalWidth();
+	#	print ("\r$empty_string");
+		clearScreen();
+	} else {
+		if ($dscf ne $PREVIOUS_DISPLAY_STRING_CF
+			or $PREVIOUS_TERMINAL_HEIGHT!=getTerminalHeight()) {
+			clearScreen();
 			print ("\r$dscf");
+			$PREVIOUS_DISPLAY_STRING_CF=$dscf;
+			$PREVIOUS_TERMINAL_HEIGHT=getTerminalHeight();
+			
 		}
-		$PREVIOUS_DISPLAY_STRING_CF=$dscf;
 	}
+	# print a snail logo
+	if ($settings{"snail_logo"} eq "1") {
+		printSnailLogo();
+	}
+	setCursorInvisible();
 }
+
+sub setCursorInvisible {
+	#print ("\e]12;#000000\a");
+	print ("\e[?25l");
+}
+
+sub setCursorVisible {
+	#print ("\e]12;#FFFFFF\a");
+	print ("\e[?25h");
+}
+
+sub setBackgroundBlack {
+	print ("\r\e]11;#000000\a\r");
+#	print ("\e[2K"); # escape sequence to delete entire line
+	my $empty_string = ' ' x getTerminalWidth();
+	print ("\r$empty_string");	
+}
+
+sub eraseLine {
+	my $blank_line='x' x getTerminalWidth();
+	print ("\r$ANSI_COLORS{BLACK}$blank_line");
+}
+
+sub clearScreen {
+	print ("\e[H\033[2J");
+}
+
+sub printSnailLogo() {
+	print ("\r\e[38;2;90;76;3m\@\e[38;2;85;107;47my$COLORS{NORMAL}"); #snail logo
+}
+
+#### this one just resets the cursor color before exiting
+# doesn't really work, because I can't tell what the original cursor color was lol
+# this code just has to be somewhere above where we actually print stuff
+
+$SIG{INT} = sub {
+	setCursorVisible();
+#	setBackgroundBlack();
+#	print ("\e[0m");
+	print ("\n");
+	exit (0);
+};
+
 
 
 ##################################
@@ -738,10 +930,12 @@ sub printApplets {
 
 
 setAppletsMaxWidths();
+clearScreen();
 printApplets ();
-my $i=0;
-$| = 1;
-while ($i>-1) {
+
+$| = 1; # this is to make sleep() actually work
+
+while (1) {
 	sleep ($settings{"poll_delay"});
 	my $test = "x";  
 	setAppletsMaxWidths();
@@ -751,3 +945,5 @@ while ($i>-1) {
 #	$i++;
 	#	sleep ($settings{"poll_delay"});
 }
+
+

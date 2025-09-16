@@ -30,3 +30,6 @@ It mostly works, except sometimes when there is no change of info *and* the scre
 Need to let the user pick date divider colors, need to make the colon color in the time work.
 
 Would be nice if the user could separately decide when the year appears in the date.
+
+Also pretty much anything wrong kills the whole app with an error message.
+Would be better if data is missing and it just says "err" instead.
