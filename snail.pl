@@ -124,19 +124,6 @@ my @ACCEPTABLE_SMALL_APPLETS=(
 	"volume_small"
 );
 
-my @ACCEPTABLE_SETTINGS=(
-	"poll_delay",
-	"date_format",
-	"time_format",
-#	"small_applets",
-	"wifi_interface",
-	"indent",
-	"cursor",
-	"snail_position",
-	"snail_logo",
-	"alignment"
-);
-
 my @ACCEPTABLE_COLOR_CLASSES=(
 	"LABEL",
 	"NUMBER",
@@ -180,6 +167,24 @@ my @ACCEPTABLE_COLOR_NAMES= (
 
 # default settings and flags so that we can be sure they all get set
 
+my @ACCEPTABLE_SETTINGS=(
+	"poll_delay",
+	"date_format",
+	"time_format",
+	"wifi_interface",
+	"indent",
+	"cursor",
+	"snail_position",
+	"snail_logo",
+	"alignment",
+	"cpu_temp_warn_threshold",
+	"cpu_temp_ok_threshold",
+	"cpu_temp_good_threshold",
+	"volume_warn_threshold",
+	"battery_warn_threshold",
+	"battery_ok_threshold",
+	"battery_good_threshold"
+);
 %settings = (
 	"poll_delay" => ".5",
 	"small_applets" => "1",
