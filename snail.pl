@@ -51,6 +51,12 @@ if ($os eq "OpenBSD") {
 	unless ($sound_mixer eq "sndioctl") {
 		die ("Error: sound mixer not found\n");
 	}
+} elsif ($os eq "Linux") {
+	my $sound_mixer_found_flag = 0;
+	$sound_mixer=`whereis amixer`;
+	if ($sound_mixer =~ /amixer:\s*\//) {
+		$sound_mixer = "amixer"
+	}
 }
 
 #print ("Sound mixer: $sound_mixer\n");
@@ -191,7 +197,7 @@ my @ACCEPTABLE_SETTINGS=(
 	"date_format" => "\%Y-\%m-\%d",
 	"time_format" => "\%H:\%M",
 	"alignment" => "right",
-	"wifi_interface" => "iwx0",
+	"wifi_interface" => "wlp0s20f3",
 	"indent" => "1", #indent less than one totally fucks everything if right-aligned
 	"cursor" => "left",
 	"snail_position" => "left",
@@ -579,10 +585,11 @@ sub getTimeNFCF {
 }
 
 sub getVolumeNFCF {
+	my $nf="NONE";
+	my $cf="";
 	if ($os eq "OpenBSD") {
 		my @rawvol = split( /\n/, `sndioctl`);
-		my $nf="NONE";
-		my $cf="";
+		
 		foreach (@rawvol) {
 			if ($_=~/output\.mute=1/) {
 				$nf="muted";
@@ -612,12 +619,13 @@ sub getVolumeNFCF {
 		return ($nf, $cf);
 	}
 	else {
-		die ("sorry dog only OpenBSD rn\n");
+		$nf = "fake audio";
+		$cf = "fake audio";
 	}
 }
 
 sub getWifiNFCF {
-	if ($os eq "OpenBSD") {
+	if ($os eq "OpenBSD") { #right now just works with ifocnfig
 		my $interface = $settings{"wifi_interface"};
 		my @rawwifi = split( /\n/, `ifconfig $interface`);
 		my $nf="NONE";
@@ -643,14 +651,40 @@ sub getWifiNFCF {
 		}
 		chomp ($nf);
 
-		if (length($nf) > $APPLETS_MAX_WIDTHS{"volume"}) {
+		if (length($nf) > $APPLETS_MAX_WIDTHS{"wifi"}) {
 			die ("Error: volume string too long.\n");
 		}
 		
 		return ($nf, $cf);
-	}
-	else {
-		die ("sorry dog only OpenBSD rn\n");
+	} elsif ($os eq "Linux") {
+	#	print ("getting wifi\n");
+		my $interface = $settings{"wifi_interface"};
+		my @rawwifi = split( /\n/, `ifconfig $interface`);
+		my $nf="NONE";
+		my $cf="";
+		if ($rawwifi[0]=~/$interface/) {
+			#($nf)=($rawwifi[0]=~/($interface)/);
+			#print ("$nf\n");
+			if ($rawwifi[0]=~/RUNNING/) {
+				$nf="wifi up";
+				$cf=$COLORS{"LABEL"}."wifi ".$COLORS{"GOOD"}."up";
+			} elsif ($nf=~/BROADCAST/) {
+				$nf="wifi down";
+				$cf=$COLORS{"LABEL"}."wifi ".$COLORS{"BAD"}."down";
+			} else {
+				$nf = "wifi err";
+				$cf = $COLORS {"LABEL"}."wifi ".$COLORS{"BAD"}."err";
+			}
+		} else {
+			die ("Error: unable to read status of wifi interface $interface.\n");
+		}
+		chomp ($nf);
+
+		if (length($nf) > $APPLETS_MAX_WIDTHS{"wifi"}) {
+			die ("Error: volume string too long.\n");
+		}
+		
+		return ($nf, $cf);
 	}
 }
 
@@ -684,18 +718,46 @@ sub getBatNFCF {
 		$nf = $bat_or_ac." ".$bat_capacity."\%";
 		$cf = $COLORS{"LABEL"}.$bat_or_ac." ";
 		$cf .= $COLORS{"NUMBER"}.$bat_capacity.$COLORS{"UNITS"}."\%";
+	} elsif ($os eq "Linux") {
+		$bat_capacity=`cat /sys/class/power_supply/BAT0/capacity`;
+		chomp ($bat_capacity);
+		$bat_or_ac=`cat /sys/class/power_supply/BAT0/status`;
+		chomp ($bat_or_ac);
+		if ($bat_or_ac eq "Discharging") {
+			$bat_or_ac = "bat";
+		} else {
+			$bat_or_ac = "ac";
+		}
+		$nf = $bat_or_ac." ".$bat_capacity."\%";
+		$cf = $COLORS{"LABEL"}.$bat_or_ac." ";
+		$cf .= $COLORS{"NUMBER"}.$bat_capacity.$COLORS{"UNITS"}."\%";
 	}
 	return ($nf, $cf);
 }
 
-sub getVPN_NFCF { ##################################### Doesn't work at all yet
+sub getVPN_NFCF { # only works for mullvad on linux rn
 	my $nf="";
 	my $cf="";
-	my $raw_vpn_output="";
+	my @raw_vpn_output;
+	my $country="";
 	if ($vpn eq "wg") {
-		$raw_vpn_output=`wg show wg0`;
+		@raw_vpn_output=`wg show wg0`;
 		
-	}
+	} elsif ($vpn eq "mullvad") {
+		@raw_vpn_output=split(/\n/,`mullvad status`);
+		if ($raw_vpn_output[0] =~ /Disconnected/) {
+			$nf="vpn down";
+			$cf=$COLORS{"LABEL"}."vpn ".$COLORS{"BAD"}."down";
+		} elsif ($raw_vpn_output[0] =~ /Connected./ and 
+			$raw_vpn_output[1] =~ /.*Relay:\s*[a-zA-Z][a-zA-Z]/) {
+			($country)=$raw_vpn_output[1]=~/.*Relay:\s*([a-zA-Z][a-zA-Z])/;
+			$nf="vpn up";
+			$cf=$COLORS{"LABEL"}."vpn ".$COLORS{"GOOD"}.$country;
+		} else {
+			$nf="vpn up";
+			$cf=$COLORS{"LABEL"}."vpn ".$COLORS{"BAD"}."err";
+		}
+	}		
 	return ($nf,$cf);
 }
 
@@ -774,8 +836,13 @@ sub getDisplayStringsNFCF() { #mostly for debugging at this point
 			$dsnf .= $timenf;
 		} elsif ($display_divided_LTR_array[$i] eq "volume") {
 			my ($volumenf, $volumecf) = getVolumeNFCF();
-			$dscf .= $volumecf;
-			$dsnf .= $volumenf;
+			if ($os eq "Linux") {
+				$dscf = "fake vol";
+				$dsnf = "fake vol";
+			} else {
+				$dscf .= $volumecf;
+				$dsnf .= $volumenf;
+			}
 			#print ($dscf);
 		} elsif ($display_divided_LTR_array[$i] eq "wifi") {
 			my ($wifinf, $wificf) = getWifiNFCF();
@@ -910,7 +977,7 @@ sub clearScreen {
 }
 
 sub printSnailLogo() {
-	print ("\r\e[38;2;90;76;3m\@\e[38;2;85;107;47my$COLORS{NORMAL}"); #snail logo
+	print ("\r\e[38;2;85;107;47m\u1c3af\e[38;2;90;76;3m\@\e[38;2;85;107;47my$COLORS{NORMAL}"); #snail logo
 }
 
 #### this one just resets the cursor color before exiting
