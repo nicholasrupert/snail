@@ -43,7 +43,7 @@ my $terminal="alacritty";
 
 #get sound mixer
 
-my @ACCEPTABLE_SOUND_MIXERS=("amixer", "sndioctl");
+my @ACCEPTABLE_SOUND_MIXERS=("amixer", "pamixer", "sndioctl");
 my $sound_mixer;
 
 if ($os eq "OpenBSD") {
@@ -53,9 +53,12 @@ if ($os eq "OpenBSD") {
 	}
 } elsif ($os eq "Linux") {
 	my $sound_mixer_found_flag = 0;
-	$sound_mixer=`whereis amixer`;
-	if ($sound_mixer =~ /amixer:\s*\//) {
-		$sound_mixer = "amixer"
+	if (`whereis pamixer` =~ /pamixer:\s*\//) {
+		$sound_mixer = "pamixer";
+	} elsif (`whereis pamixer`=~ /pamixer:\s*\//) {
+		$sound_mixer = "amixer";
+	} else {
+		die ("Error: sound mixer not found\n");
 	}
 }
 
@@ -390,10 +393,10 @@ foreach (@priority_array) {
 }
 #print ("All applets in priority list appear in RTL list.\n");
 
-#################################################
+#########################################################
 #	Figure out how big the window is and which	#
-#	applets to display and display them				#
-#################################################
+#	applets to display				#
+#########################################################
 
 #redo max widths to change depending on settings
 # e.g. if they wanted a shorter or longer date format
@@ -502,11 +505,11 @@ sub setAppletsMaxWidths {
 	$APPLETS_MAX_WIDTHS{"date"}=$date_max_width;
 }
 
-########################################
-#													#
+#########################################
+#					#
 # actually get the displayed applets	#
-#													#
-########################################	
+#					#
+#########################################	
 
 sub setAppletsToDisplay () {
 	eraseLTRLists();
@@ -617,11 +620,49 @@ sub getVolumeNFCF {
 			$nf = "audio ".$nf."\%";
 		}
 		return ($nf, $cf);
+	} elsif ($os eq "Linux") {
+		my $volume = "";
+		if ($sound_mixer eq "pamixer") {
+			if (`pamixer --get-mute` =~ /true/) {
+				$volume = "muted";
+				$nf = "audio $volume";
+				$cf = $COLORS{"LABEL"}."audio ".$COLORS{"GOOD"}.$volume;
+			} else {
+				$volume = `awk -F"[][]" '/Left:/ { print \$2 }' <(amixer sget Master)`;
+				($volume) = $volume =~ /(\d+)/; #get rid of percent sign
+				$nf = "audio $volume\%";
+				$cf = $COLORS{"LABEL"}."audio ".$COLORS{"NUMBER"}.$volume.$COLORS{"UNITS"}."\%";
+			}
+	#		print ("volume: $volume\n");
+		} elsif ($sound_mixer eq "amixer") {
+			if (`amixer get Master | tail -2 | grep -c '\[on\]'` =~ /0/) { # no speakers "on" = it's muted
+				$volume = "muted";
+				$nf = "audio $volume";
+				$cf = $COLORS{"LABEL"}."audio ".$COLORS{"GOOD"}.$volume;
+			} else {
+				my @rawvol = `amixer get Master`;
+				foreach (@rawvol) {
+					#print ("in the loop\n");
+					if ($_ =~ /Front.*\[\d*\%\].*\[on\]/) {
+					#	print ("In the if\n");
+						($volume) = $_=~ /Front.*\[(\d*)\%\].*\[on\]/;
+						last;
+					}
+				}
+			}
+			
+		#	if ($volume eq "") {
+		#		$volume = "err";
+		#	}		
+			$nf = "audio $volume\%";
+			$cf = $COLORS{"LABEL"}."audio ".$COLORS{"NUMBER"}.$volume.$COLORS{UNITS}."\%";
+		}
 	}
-	else {
-		$nf = "fake audio";
-		$cf = "fake audio";
-	}
+	#	print ("volume: $volume\n");
+
+		
+	return ($nf, $cf);
+	
 }
 
 sub getWifiNFCF {
@@ -836,13 +877,8 @@ sub getDisplayStringsNFCF() { #mostly for debugging at this point
 			$dsnf .= $timenf;
 		} elsif ($display_divided_LTR_array[$i] eq "volume") {
 			my ($volumenf, $volumecf) = getVolumeNFCF();
-			if ($os eq "Linux") {
-				$dscf = "fake vol";
-				$dsnf = "fake vol";
-			} else {
-				$dscf .= $volumecf;
-				$dsnf .= $volumenf;
-			}
+			$dscf .= $volumecf;
+			$dsnf .= $volumenf;
 			#print ($dscf);
 		} elsif ($display_divided_LTR_array[$i] eq "wifi") {
 			my ($wifinf, $wificf) = getWifiNFCF();
@@ -977,7 +1013,7 @@ sub clearScreen {
 }
 
 sub printSnailLogo() {
-	print ("\r\e[38;2;85;107;47m\u1c3af\e[38;2;90;76;3m\@\e[38;2;85;107;47my$COLORS{NORMAL}"); #snail logo
+	print ("\r\e[38;2;85;107;47m_\e[38;2;90;76;3m\@\e[38;2;85;107;47my$COLORS{NORMAL}"); #snail logo
 }
 
 #### this one just resets the cursor color before exiting
@@ -994,11 +1030,11 @@ $SIG{INT} = sub {
 
 
 
-##################################
-#											#
-#		actually do it					#
-#											#
-##################################
+#########################################
+#					#
+#		actually do it		#
+#					#
+#########################################
 
 
 setAppletsMaxWidths();
@@ -1009,7 +1045,7 @@ $| = 1; # this is to make sleep() actually work
 
 while (1) {
 	sleep ($settings{"poll_delay"});
-	my $test = "x";  
+#	my $test = "x";  
 	setAppletsMaxWidths();
 #	eraseLTRLists();
 #	print (" ");
