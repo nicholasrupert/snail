@@ -90,7 +90,7 @@ unless (grep { $vpn eq $_ } @ACCEPTABLE_VPNS or $vpn eq "NONE") {
 
 my $HOME=`echo \$HOME`;
 chomp($HOME);
-my @ACCEPTABLE_CONFIG_FILES=("$HOME/.snailrc", "$HOME/.config/snailrc", "/etc/snailrc", "./.snailrc");
+my @ACCEPTABLE_CONFIG_FILES=("./.snailrc", "$HOME/.snailrc", "$HOME/.config/snailrc", "/etc/snailrc");
 my $config_file="DEFAULTS";
 
 foreach (@ACCEPTABLE_CONFIG_FILES) {
@@ -285,6 +285,8 @@ my @small_applets;
 my $PREVIOUS_DISPLAY_STRING_CF="init";
 my $PREVIOUS_TERMINAL_HEIGHT=getTerminalHeight();
 my $too_small_to_show_applets_flag=0;
+
+my $LOGO_WIDTH = 3;
 
 # now read the config file, check inputs for sanity, and set the configs
 
@@ -513,14 +515,14 @@ sub setAppletsMaxWidths {
 
 sub setAppletsToDisplay () {
 	eraseLTRLists();
-	my $MAX_WIDTH=getTerminalWidth()-2*$settings{"indent"};
+	my $MAX_WIDTH=getTerminalWidth()-2*$settings{"indent"}-$LOGO_WIDTH;
 	my $display_width=$settings{"indent"};
 	my $applet_counter=0;
 	while ($display_width<$MAX_WIDTH and $applet_counter<@priority_array and
 		$applet_counter<50) {
 			addAppletLTR($applet_counter);
 			addDividers();
-			$display_width=getDisplayStringMaxWidth()+$settings{"indent"};
+			$display_width=getDisplayStringMaxWidth();
 			$applet_counter++;
 	}
 	if ($display_width > $MAX_WIDTH) {
@@ -789,13 +791,13 @@ sub getVPN_NFCF { # only works for mullvad on linux rn
 		if ($raw_vpn_output[0] =~ /Disconnected/) {
 			$nf="vpn down";
 			$cf=$COLORS{"LABEL"}."vpn ".$COLORS{"BAD"}."down";
-		} elsif ($raw_vpn_output[0] =~ /Connected./ and 
-			$raw_vpn_output[1] =~ /.*Relay:\s*[a-zA-Z][a-zA-Z]/) {
-			($country)=$raw_vpn_output[1]=~/.*Relay:\s*([a-zA-Z][a-zA-Z])/;
+		} elsif ($raw_vpn_output[0] =~ /Connected/ and 
+			$raw_vpn_output[1] =~ /.*Relay:\s*[a-zA-Z][a-zA-Z]\-/) {
+			($country)=$raw_vpn_output[1]=~/.*Relay:\s*([a-zA-Z][a-zA-Z])\-/;
 			$nf="vpn up";
 			$cf=$COLORS{"LABEL"}."vpn ".$COLORS{"GOOD"}.$country;
 		} else {
-			$nf="vpn up";
+			$nf="vpn err";
 			$cf=$COLORS{"LABEL"}."vpn ".$COLORS{"BAD"}."err";
 		}
 	}		
@@ -897,6 +899,10 @@ sub getDisplayStringsNFCF() { #mostly for debugging at this point
 			my ($cpunf, $cpucf) = getCPUTempNFCF();
 			$dscf .= $cpucf;
 			$dsnf .= $cpunf;
+		} elsif ($display_divided_LTR_array[$i] eq "vpn") {
+			my ($vpnnf, $vpncf) = getVPN_NFCF();
+			$dscf .= $vpncf;
+			$dsnf .= $vpnnf;
 		} elsif ($display_divided_LTR_array[$i] eq "tail") {
 			$too_small_to_show_applets_flag=1;
 		} else {
@@ -931,7 +937,7 @@ sub getLeadingSpaces { # takes display string with no formatting as an arg
 	#	die ("Error: display string width $length, terminal width only $terminal_width.\n");
 	#} els
 	if ($settings{"alignment"} eq "left") {
-		$leading_spaces = ' 'x $indent;
+		$leading_spaces = ' 'x ($indent+$LOGO_WIDTH);
 	} elsif ($settings{"alignment"} eq "center") {
 		my $n = ($terminal_width-$length)/2;
 		if ($n<0) {

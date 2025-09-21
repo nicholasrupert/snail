@@ -37,6 +37,9 @@ see? this line doesn't matter
 ^time
 ^date
 ^battery_ac
+#^fan_speed
+#^cpu_temp
+^vpn
 ^wifi
 ^volume
 
@@ -75,6 +78,9 @@ see? this line doesn't matter
 &date
 &volume
 &wifi
+&vpn
+#&cpu_temp
+#&fan_speed
 
 	##################################
 	# small apps							#
@@ -118,6 +124,7 @@ see? this line doesn't matter
 !poll_delay=.5
 !date_format=%y-%m-%d
 !indent=1
+!alignment=right
 	
    ############################
    # color settings				#
