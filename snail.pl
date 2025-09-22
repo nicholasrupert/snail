@@ -58,7 +58,7 @@ if ($os eq "OpenBSD") {
 	my $sound_mixer_found_flag = 0;
 	if (`whereis pamixer` =~ /pamixer:\s*\//) {
 		$sound_mixer = "pamixer";
-	} elsif (`whereis pamixer`=~ /pamixer:\s*\//) {
+	} elsif (`whereis amixer`=~ /pamixer:\s*\//) {
 		$sound_mixer = "amixer";
 	} else {
 		die ("Error: sound mixer not found\n");
