@@ -5,6 +5,9 @@ use warnings;
 
 #use Term::ReadKey;
 
+use utf8;
+binmode(STDOUT, ":utf8");
+
 my @errors;
 
 # Perl note: backticks use /bin/sh
@@ -63,6 +66,10 @@ if ($os eq "OpenBSD") {
 }
 
 #print ("Sound mixer: $sound_mixer\n");
+
+# get sensors command if linux
+
+my $sensor_command="sensors";
 
 #get VPN type
 # this check should really get moved to when we read the applet list
@@ -383,6 +390,12 @@ unless ($config_file eq "DEFAULTS") {
 #	$date_and_time_adjacent=1;
 	# default special, flag, and color settings already set
 	#print ("Using defaults. No config file opened.\n");
+}
+
+# check for snail logo
+
+if ($settings{"snail_logo"} eq "false" or $settings{"snail_logo"} eq "no" or int($settings{"snail_logo"}) <1) {
+	$LOGO_WIDTH=0;
 }
 
 # check that all applets in priority listing are in RTL listing
@@ -825,6 +838,20 @@ sub getFanSpeedNFCF {
 			$cf .= $COLORS{"LABEL"}."fan ";
 			$cf .= $COLORS{"BAD"}." err";
 		}
+	} elsif ($os eq "Linux" and $sensor_command="sensors") {
+		my @raw_fan_output=split(/\n/, `sensors | grep -i fan`);
+		#print ("Raw fan output 0: $raw_fan_output[0]\n");
+		if ($raw_fan_output[0] =~ /fan.*:\s+\d+\s+RPM/) {
+			($rpms) = $raw_fan_output[0] =~ /fan.*:\s+(\d+)\s+RPM/;
+			$nf="fan $rpms rpm";
+			$cf= $COLORS{"LABEL"}."fan ".$COLORS{"NUMBER"}.$rpms.$COLORS{"UNITS"}." rpm";
+		} else {
+			$nf="fan err";
+			$cf= $COLORS{"LABEL"}."fan ".$COLORS{"BAD"}." err";
+		}
+	} else {
+		$nf="fan err";
+		$cf= $COLORS{"LABEL"}."fan ".$COLORS{"BAD"}." err";
 	}
 	return ($nf, $cf);
 }
@@ -855,7 +882,21 @@ sub getCPUTempNFCF {
 				$cf .= $COLORS{"BAD"}." err";
 			}
 		}
-	}
+	} #elsif ($os eq "Linux" and $sensor_command="sensors") {
+#		my @raw_fan_output=split(/\n/, `sensors | grep -i CPU`);
+#		#print ("Raw fan output 0: $raw_fan_output[0]\n");
+#		if ($raw_fan_output[0] =~ /CPU.*:\s+\d+\s+RPM/) {
+#			($rpms) = $raw_fan_output[0] =~ /CPU.*:\s+\+(\d+)/;
+#			$nf="fan $rpms rpm";
+#			$cf= $COLORS{"LABEL"}."fan ".$COLORS{"NUMBER"}.$rpms.$COLORS{"UNITS"}." rpm";
+#		} else {
+#			$nf="fan err";
+#			$cf= $COLORS{"LABEL"}."fan ".$COLORS{"BAD"}." err";
+#		}
+#	} else {
+#		$nf="fan err";
+#		$cf= $COLORS{"LABEL"}."fan ".$COLORS{"BAD"}." err";
+#	}
 	return ($nf, $cf);
 }	
 			
@@ -941,7 +982,8 @@ sub getLeadingSpaces { # takes display string with no formatting as an arg
 	} elsif ($settings{"alignment"} eq "center") {
 		my $n = ($terminal_width-$length)/2;
 		if ($n<0) {
-			die ("Error: negative leading spaces\n");
+			$n=0;
+			push (@errors, "Error: negative leading spaces\n");
 		}
 		$leading_spaces = ' ' x $n;
 	} else { # defaults to right aligned
@@ -950,7 +992,8 @@ sub getLeadingSpaces { # takes display string with no formatting as an arg
 #		print ("display string length: $length\n");
 #		print ("leading spaces: $n\n");
 		if ($n < 0) {
-			die ("Error: negative leading spaces\n");
+			$n=0;
+			push (@errors, "Error: negative leading spaces\n");
 		}
 		$leading_spaces = ' ' x $n;
 	}
