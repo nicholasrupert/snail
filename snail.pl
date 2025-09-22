@@ -20,7 +20,7 @@ my @errors;
 # check what shell we're using
 # I don't actually think this makes a difference
 
-my $ACCEPTABLE_SHELLS = "bash|ksh|csh";
+my $ACCEPTABLE_SHELLS = "bash|ksh|csh|zsh";
 my $shell;
 ($shell)=(`echo \$SHELL`=~/($ACCEPTABLE_SHELLS)/);
 unless ($shell=~/$ACCEPTABLE_SHELLS/) {
