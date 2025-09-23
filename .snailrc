@@ -79,7 +79,8 @@ see? this line doesn't matter
 	# prepend with *		 #
 	##################################
 
-##### complete list #####	
+##### complete list #####
+### absolutely does not work	
 
 # battery_ac_small
 # volume_small
@@ -108,14 +109,14 @@ see? this line doesn't matter
 # date_format=%Y-%m-%d (or whatever. uses date shell format)
 # time_format=%H-%M (or whatever. uses date shell format)
 # wifi_interface=iwx0 # or whatever
-# indent
+# indent=n (any number of spaces, should be at least 1)
 # snail_logo=true
-# alignment
+# alignment=left|center|right #defaults right
 
 ##### sample list #####
 
 !poll_delay=.5
-!date_format=%Y-m-%d
+!date_format=%Y-%m-%d
 !indent=1
 !alignment=right
 	
