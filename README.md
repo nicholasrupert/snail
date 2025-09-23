@@ -24,14 +24,17 @@ What is the point of this program?
   Suppose you have a manual tiling window manager with no window borders. Then you probably like screen real estate a lot.
   So you probably don't want a menu bar that goes all the way across your screen. This is frequently built into even manual tiling window managers.
   Snail just runs in a window (or a terminal), so you can make it as wide or as narrow as you want.
+  
   Sometimes you might even be resizing the window that has your menubar in it, and so it needs to smoothly display more or less information.
   This one does that. If you shrink it down, you get just the time. Make it wide, you get everything.
   You can easily customize the ordering in which applets appear or disappear, and easily customize the right-to-left order.
   You can have the applets display left aligned, centered, or right aligned.
+ 
   If you use a manual tiling window manager, you probably also like terminal-ish esthetics. This does that.
   By default it uses whatever terminal theme you are using, but you can manually change the colors in the config file.
  
   If you feel like customizing it, you can look at .snailrc and mess with it. It looks in ~/.snailrc, then ~/.config/snailrc, then /etc/snailrc.
+
   If you think it's missing an applet, or an applet could be expanded to support more stuff, post a comment.
   If you think my code is garbage, post a comment.
 
