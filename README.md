@@ -89,3 +89,5 @@ To do:
 ---
 
 I might one day want to make it run at the top or bottom of an actively-used terminal window. 
+
+I might one day want to make the installer that generates snail.pl based on the computer's OS and hardware and whatnot, so that the program doesn't have to check each time. Or possibly have it update itself when run with like "snail -u" or something.
