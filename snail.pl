@@ -46,24 +46,27 @@ my $terminal="alacritty";
 
 #get sound mixer
 
-my @ACCEPTABLE_SOUND_MIXERS=("amixer", "pamixer", "sndioctl");
-my $sound_mixer;
+my @ACCEPTABLE_SOUND_MIXERS=("wpctl", "pamixer", "amixer", "sndioctl");
+my $sound_mixer="err";
 
 if ($os eq "OpenBSD") {
 	($sound_mixer)=(`whereis sndioctl`=~/(sndioctl)/);
 	unless ($sound_mixer eq "sndioctl") {
-		die ("Error: sound mixer not found\n");
+		push (@errors, "Error: sound mixer not found\n");
 	}
 } elsif ($os eq "Linux") {
-	my $sound_mixer_found_flag = 0;
-	if (`whereis pamixer` =~ /pamixer:\s*\//) {
-		$sound_mixer = "pamixer";
-	} elsif (`whereis amixer`=~ /pamixer:\s*\//) {
-		$sound_mixer = "amixer";
-	} else {
-		die ("Error: sound mixer not found\n");
+	foreach (@ACCEPTABLE_SOUND_MIXERS) {
+		if (`whereis $_` =~ /$_:\s*\//) {
+			$sound_mixer = $_;
+			last;
+		}
+	}
+	if ($sound_mixer eq "err") {
+		push (@errors, "Error: sound mixer not found\n");
 	}
 }
+
+$sound_mixer="amixer";
 
 #print ("Sound mixer: $sound_mixer\n");
 
@@ -76,7 +79,7 @@ my $sensor_command="sensors";
 # because probably most people don't even use or care about vpn
 
 my @ACCEPTABLE_VPNS=("mullvad", "wg");
-my $vpn="NONE";
+my $vpn="err";
 
 foreach (@ACCEPTABLE_VPNS) {
 	my $whereis_output=`whereis $_`;
@@ -88,8 +91,8 @@ foreach (@ACCEPTABLE_VPNS) {
 		last;
 	}
 }
-unless (grep { $vpn eq $_ } @ACCEPTABLE_VPNS or $vpn eq "NONE") {
-	die ("Error: vpn $vpn not recognized\n");
+unless (grep { $vpn eq $_ } @ACCEPTABLE_VPNS or $vpn eq "err") {
+	push (@errors, "Error: vpn $vpn not recognized\n");
 }
 #print ("VPN: $vpn\n");
 
@@ -637,7 +640,11 @@ sub getVolumeNFCF {
 		return ($nf, $cf);
 	} elsif ($os eq "Linux") {
 		my $volume = "";
-		if ($sound_mixer eq "pamixer") {
+		if ($sound_mixer eq "err") {
+			$nf = "audio err";
+			$cf = $COLORS{"LABEL"}."audio ".$COLORS{"BAD"}."err";
+		}
+		elsif ($sound_mixer eq "pamixer") {
 			if (`pamixer --get-mute` =~ /true/) {
 				$volume = "muted";
 				$nf = "audio $volume";
@@ -650,12 +657,15 @@ sub getVolumeNFCF {
 			}
 	#		print ("volume: $volume\n");
 		} elsif ($sound_mixer eq "amixer") {
-			if (`amixer get Master | tail -2 | grep -c '\[on\]'` =~ /0/) { # no speakers "on" = it's muted
+			my @rawvol = `amixer get Master | tail -2`;
+			$volume = "err";
+
+			if ($rawvol[0] =~ /\[off\]/) { 
+				
 				$volume = "muted";
 				$nf = "audio $volume";
 				$cf = $COLORS{"LABEL"}."audio ".$COLORS{"GOOD"}.$volume;
 			} else {
-				my @rawvol = `amixer get Master`;
 				foreach (@rawvol) {
 					#print ("in the loop\n");
 					if ($_ =~ /Front.*\[\d*\%\].*\[on\]/) {
@@ -664,14 +674,35 @@ sub getVolumeNFCF {
 						last;
 					}
 				}
+				if ($volume eq "err") {
+					$nf = "audio $volume";
+					$cf = $COLORS{"LABEL"}."audio ".$COLORS{"BAD"}.$volume;
+				} else {
+					$nf = "audio $volume\%";
+					$cf = $COLORS{"LABEL"}."audio ".$COLORS{"NUMBER"}.$volume.$COLORS{UNITS}."\%";
+				}
 			}
 			
 		#	if ($volume eq "") {
 		#		$volume = "err";
 		#	}		
-			$nf = "audio $volume\%";
-			$cf = $COLORS{"LABEL"}."audio ".$COLORS{"NUMBER"}.$volume.$COLORS{UNITS}."\%";
+			
+		} elsif ($sound_mixer eq "wpctl") {
+			$volume = `wpctl get-volume \@DEFAULT_AUDIO_SINK\@`;
+		#	print ("volume: $volume\n");
+			if ($volume =~ /MUTED/) {
+				$volume = "muted";
+				$nf = "audio $volume";
+				$cf = $COLORS{"LABEL"}."audio ".$COLORS{"GOOD"}.$volume;
+			} else {
+				($volume) = $volume =~ /.*(\d\.\d*)/;
+				$volume = 100*$volume;
+				$volume = int ($volume);
+				$nf = "audio $volume\%";
+				$cf = $COLORS{"LABEL"}."audio ".$COLORS{"NUMBER"}.$volume.$COLORS{"UNITS"}."\%";
+			}
 		}
+				
 	}
 	#	print ("volume: $volume\n");
 
