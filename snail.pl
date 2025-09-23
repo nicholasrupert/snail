@@ -890,9 +890,15 @@ sub getFanSpeedNFCF {
 sub getCPUTempNFCF {
 	my $nf="";
 	my $cf="";
-	my $cpu_temp="";
+	my $cpu_temp="err";
 	my $c_or_f="C";
-	my $DEGREE_SYMBOL="\xc2\xb0";
+	my $DEGREE_SYMBOL="";
+	if ($os eq "OpenBSD") {
+		$DEGREE_SYMBOL="\xc2\xb0";
+	}
+	if ($os eq "Linux") {
+		$DEGREE_SYMBOL="\xb0";
+	}
 	if ($os eq "OpenBSD") {
 		my @raw_cpu_output=split(/\n/,`sysctl hw.sensors`);
 		foreach (@raw_cpu_output) {
@@ -913,21 +919,22 @@ sub getCPUTempNFCF {
 				$cf .= $COLORS{"BAD"}." err";
 			}
 		}
-	} #elsif ($os eq "Linux" and $sensor_command="sensors") {
-#		my @raw_fan_output=split(/\n/, `sensors | grep -i CPU`);
-#		#print ("Raw fan output 0: $raw_fan_output[0]\n");
-#		if ($raw_fan_output[0] =~ /CPU.*:\s+\d+\s+RPM/) {
-#			($rpms) = $raw_fan_output[0] =~ /CPU.*:\s+\+(\d+)/;
-#			$nf="fan $rpms rpm";
-#			$cf= $COLORS{"LABEL"}."fan ".$COLORS{"NUMBER"}.$rpms.$COLORS{"UNITS"}." rpm";
-#		} else {
-#			$nf="fan err";
-#			$cf= $COLORS{"LABEL"}."fan ".$COLORS{"BAD"}." err";
-#		}
-#	} else {
-#		$nf="fan err";
-#		$cf= $COLORS{"LABEL"}."fan ".$COLORS{"BAD"}." err";
-#	}
+	} elsif ($os eq "Linux" and $sensor_command="sensors") {
+		my $raw_cpu_output=`sensors | grep -i 'CPU'`;
+		if ($raw_cpu_output =~ /CPU\s*:.*\d+/) {
+			($cpu_temp) = $raw_cpu_output =~ /CPU\s*:\s*\+(\d+)/;
+			$nf="cpu $cpu_temp*C";
+			$cf= $COLORS{"LABEL"}."cpu ".$COLORS{"NUMBER"}.$cpu_temp.$COLORS{"UNITS"}.$DEGREE_SYMBOL.$c_or_f;
+		} else {
+			$nf="cpu err";
+			$cf= $COLORS{"LABEL"}."cpu ".$COLORS{"BAD"}."err";
+			push (@errors, "CPU temp not read\n");
+		}
+	} else {
+		$nf="cpu err";
+		$cf= $COLORS{"LABEL"}."fan ".$COLORS{"BAD"}." err";
+		push (@errors, "CPU temp not read\n");
+	}
 	return ($nf, $cf);
 }	
 			

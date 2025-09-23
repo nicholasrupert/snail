@@ -11,14 +11,13 @@ see? this line doesn't matter
 # snail looks for ~/.snailrc, then ~/.config/snailrc
 # then /etc/snailrc
 
-	############################
+	#################################
 	# right-to-left ordering	#
-	# put them in order			#
-	# prepend with a ^			#
-	############################
+	# put them in order		#
+	# prepend with a ^		#
+	#################################
 
 ##### complete list ####
-# small_applets
 # date
 # time
 # battery_ac
@@ -34,31 +33,29 @@ see? this line doesn't matter
 ^date
 ^battery_ac
 ^fan_speed
-#^cpu_temp
+^cpu_temp
 ^vpn
 ^wifi
 ^volume
 
 	#################################################
-	# appear-disappear priority							#
-	# controls which applets appear depending			#
+	# appear-disappear priority			#
+	# controls which applets appear depending	#
 	# on window size. Put them in order with most	#
-	# important at the top.									#
+	# important at the top.				#
 	# the applets here must all be listed in the 	#
-	# RTL ordering above, though not necessarily		#
+	# RTL ordering above, though not necessarily	#
 	# in the same order. Any omitted applets here 	#
-	# will not be displayed.								#
-	# prepend with &											#
+	# will not be displayed.			#
+	# prepend with &				#
 	#################################################
 
 ##### complete list #####
-# small_applets
 # date
 # time
 # battery_ac
 # volume
 # cpu_temp
-# ram
 # fan_speed
 # vpn
 # wifi
@@ -71,15 +68,15 @@ see? this line doesn't matter
 &volume
 &wifi
 &vpn
-#&cpu_temp
+&cpu_temp
 &fan_speed
 
 	##################################
-	# small apps							#
-	# makes a teeny tiny version of	#
-	# the apps you pick.					#
-	# basically like stoplights.		#
-	# prepend with *						#
+	# small apps			 #
+	# makes a teeny tiny version of	 #
+	# the apps you pick. 		 #
+	# basically like stoplights.	 #
+	# prepend with *		 #
 	##################################
 
 ##### complete list #####	
@@ -99,12 +96,12 @@ see? this line doesn't matter
 *wifi_small
 *vpn_small
 
-	############################
-	# special settings			#
-	# prepend with %				#
+	#################################
+	# special settings		#
+	# prepend with !		#
 	# omitted goes to default	#
 	# !setting_name=[number]	#
-	############################
+	#################################
 	
 ##### complete list ######
 # poll_delay=n (any number in seconds)
@@ -114,29 +111,22 @@ see? this line doesn't matter
 # indent
 # snail_logo=true
 # alignment
-# cpu_temp_warn_threshold
-# cpu_temp_ok_threshold
-# cpu_temp_good_threshold
-# volume_warn_threshold
-# battery_warn_threshold
-# battery_ok_threshold
-# battery_good_threshold
 
 ##### sample list #####
 
 !poll_delay=.5
-!date_format=%m-%d
+!date_format=%Y-m-%d
 !indent=1
 !alignment=right
 	
-   ############################
-   # color settings				#
-   # for some reason 			#
-	# I put these in all caps	#
-   # prepend with $				#
+   ##############################
+   # color settings		#
+   # for some reason 		#
+   # I put these in all caps	#
+   # prepend with $		#
    # omitted goes to default	#			
    # $COLOR_CLASS=COLOR_NAME	#
-   ############################
+   ##############################
 
 #### complete list of COLOR_CLASS #####
 # LABEL
@@ -154,7 +144,7 @@ see? this line doesn't matter
 # NORMAL
 # BLINK_1
 # BLINK_2
-# you can't actually set BLINK by itself
+
 
 #### complete list of COLOR_NAMES #####
 
