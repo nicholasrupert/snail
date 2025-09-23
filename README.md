@@ -16,6 +16,7 @@ Snail is easy to install:
 --- 
 
 What is the point of this program?
+
   Suppose you have a manual tiling window manager with no window borders. Then you probably like screen real estate a lot.
   So you probably don't want a menu bar that goes all the way across your screen. This is frequently built into even manual tiling window managers.
   Snail just runs in a window (or a terminal), so you can make it as wide or as narrow as you want.
