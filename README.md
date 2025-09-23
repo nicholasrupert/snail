@@ -81,3 +81,7 @@ To do:
 - Clean up code -- too many nested ifs/loops and too much duplicate code. Could use better comments and more consistent variable names.
 - FreeBSD support? NetBSD? DragonflyBSD? Test on NixOS?
 - The current method of figuring out which applets to display and in which order definitely works, but there has to be a cleaner way.
+
+---
+
+I might one day want to make it run at the top or bottom of an actively-used terminal window. 
