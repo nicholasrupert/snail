@@ -108,7 +108,6 @@ see? this line doesn't matter
 # poll_delay=n (any number in seconds)
 # date_format=%Y-%m-%d (or whatever. uses date shell format)
 # time_format=%H-%M (or whatever. uses date shell format)
-# wifi_interface=iwx0 # or whatever
 # indent=n (any number of spaces, should be at least 1)
 # snail_logo=true
 # alignment=left|center|right #defaults right
@@ -119,6 +118,7 @@ see? this line doesn't matter
 !date_format=%Y-%m-%d
 !indent=1
 !alignment=right
+!wifi_interface=iwx0
 	
    ##############################
    # color settings		#

@@ -586,7 +586,7 @@ sub getTimeNFCF {
 	my $cf="";
 	chomp ($raw_time);
 	if (length($raw_time) > $APPLETS_MAX_WIDTHS{"time"}) {
-		die ("Error: time string too long.\n");
+		push (@errors, "Error: time string too long.\n");
 	}
 	my ($time_div_char) = ($raw_time=~/^\d+(.)/);
 	my @time_array = split (/$time_div_char/, $raw_time);
@@ -800,7 +800,7 @@ sub getBatNFCF {
 			}
 		}
 		unless ($bat_capacity_read==1 and $bat_or_ac_read==1) {
-			die ("Unable to read apm output.\n");
+			push (@errors, "Unable to read apm output.\n");
 		}
 		$nf = $bat_or_ac." ".$bat_capacity."\%";
 		$cf = $COLORS{"LABEL"}.$bat_or_ac." ";
@@ -828,8 +828,9 @@ sub getVPN_NFCF { # only works for mullvad on linux rn
 	my @raw_vpn_output;
 	my $country="";
 	if ($vpn eq "wg") {
-		@raw_vpn_output=`wg show wg0`;
-		
+		#@raw_vpn_output=`wg show wg0`;
+		$nf="vpn err";
+		$cf=$COLORS{"LABEL"}."vpn ".$COLORS{"BAD"}."err";
 	} elsif ($vpn eq "mullvad") {
 		@raw_vpn_output=split(/\n/,`mullvad status`);
 		if ($raw_vpn_output[0] =~ /Disconnected/) {
