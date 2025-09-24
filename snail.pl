@@ -84,9 +84,9 @@ my $vpn="err";
 foreach (@ACCEPTABLE_VPNS) {
 	my $whereis_output=`whereis $_`;
 #	print ("in the vpn loop, on $whereis_output\n");
-	if ($whereis_output=~/$_/) {
+	if ($whereis_output=~/.*\/\.*$_/) {
 #		print ("in the if\n");
-		($vpn)=($whereis_output=~/($_)/);
+		($vpn)=($whereis_output=~/.*\/\.*($_)/);
 #		print ("VPN: $vpn matches $_\n");
 		last;
 	}
@@ -195,6 +195,7 @@ my @ACCEPTABLE_SETTINGS=(
 	"cursor",
 	"snail_position",
 	"snail_logo",
+	"default_theme",
 	"alignment",
 	"cpu_temp_warn_threshold",
 	"cpu_temp_ok_threshold",
@@ -241,6 +242,25 @@ my %ANSI_COLORS = (
 	"LIGHT_CYAN" => "\e[1;96;40m",
 	"WHITE" => "\e[1;97;40m"
 );
+
+my %DEFAULT_THEME_COLORS = (
+	"BLACK" => "\e]11;#000000",
+	"RED" => "\e]11;#ff5454",
+	"BLUE" => "\e]11;#74b2ff",
+	"GREEN" => "\e]11;#26cd4d",
+	"CYAN" => "\e]11;#85dc85",
+	"MAGENTA" => "\e]11;#ae81ff",
+	"YELLOW" => "\e]11;#c6c684",
+	"GREY" => "\e]11;#d9dee3",
+	"WHITE" => "\e]11;#f0f3f6"
+);
+#	[colors.primary]
+#background = "#000000"
+#foreground = "#f0f3f6" #from github dark high contrast
+
+#[colors.cursor]
+#text = "#0a0c10"
+#cursor = "#f0f3f6"
 
 # default colors get set here so that we can be sure all get set
 
@@ -399,6 +419,27 @@ unless ($config_file eq "DEFAULTS") {
 
 if ($settings{"snail_logo"} eq "false" or $settings{"snail_logo"} eq "no" or int($settings{"snail_logo"}) <1) {
 	$LOGO_WIDTH=0;
+}
+
+# check for hardcoded theme
+
+if ($settings{"default_theme"} eq "true" or $settings{"default_theme"} eq "yes" or $settings{"default_theme"} eq 1) {
+	$ANSI_COLORS{"WHITE"}=$DEFAULT_THEME_COLORS{"WHITE"};
+	$ANSI_COLORS{"GREY"}=$DEFAULT_THEME_COLORS{"GREY"};
+	$ANSI_COLORS{"BLUE"}=$DEFAULT_THEME_COLORS{"BLUE"};
+	$ANSI_COLORS{"RED"}=$DEFAULT_THEME_COLORS{"RED"};
+	$ANSI_COLORS{"GREEN"}=$DEFAULT_THEME_COLORS{"GREEN"};
+	$ANSI_COLORS{"YELLOW"}=$DEFAULT_THEME_COLORS{"YELLOW"};
+	$ANSI_COLORS{"CYAN"}=$DEFAULT_THEME_COLORS{"CYAN"};
+	$ANSI_COLORS{"MAGENTA"}=$DEFAULT_THEME_COLORS{"MAGENTA"};
+	$ANSI_COLORS{"BLACK"}=$DEFAULT_THEME_COLORS{"BLACK"};
+	$ANSI_COLORS{"LIGHT_GREY"}=$DEFAULT_THEME_COLORS{"GREY"};
+	$ANSI_COLORS{"LIGHT_BLUE"}=$DEFAULT_THEME_COLORS{"BLUE"};
+	$ANSI_COLORS{"LIGHT_RED"}=$DEFAULT_THEME_COLORS{"RED"};
+	$ANSI_COLORS{"LIGHT_GREEN"}=$DEFAULT_THEME_COLORS{"GREEN"};
+	$ANSI_COLORS{"LIGHT_YELLOW"}=$DEFAULT_THEME_COLORS{"YELLOW"};
+	$ANSI_COLORS{"LIGHT_CYAN"}=$DEFAULT_THEME_COLORS{"CYAN"};
+	$ANSI_COLORS{"LIGHT_MAGENTA"}=$DEFAULT_THEME_COLORS{"MAGENTA"};
 }
 
 # check that all applets in priority listing are in RTL listing
@@ -895,7 +936,7 @@ sub getCPUTempNFCF {
 	my $c_or_f="C";
 	my $DEGREE_SYMBOL="";
 	if ($os eq "OpenBSD") {
-		$DEGREE_SYMBOL="\xc2\xb0";
+		$DEGREE_SYMBOL="\xb0";
 	}
 	if ($os eq "Linux") {
 		$DEGREE_SYMBOL="\xb0";
@@ -1085,7 +1126,7 @@ sub setCursorVisible {
 }
 
 sub setBackgroundBlack {
-	print ("\r\e]11;#000000\a\r");
+	print ("\r\e]11;#000000\r");
 #	print ("\e[2K"); # escape sequence to delete entire line
 	my $empty_string = ' ' x getTerminalWidth();
 	print ("\r$empty_string");	

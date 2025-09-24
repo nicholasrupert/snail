@@ -119,6 +119,7 @@ see? this line doesn't matter
 !indent=1
 !alignment=right
 !wifi_interface=iwx0
+!default_theme=1
 	
    ##############################
    # color settings		#
