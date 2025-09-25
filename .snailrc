@@ -118,8 +118,8 @@ see? this line doesn't matter
 !date_format=%Y-%m-%d
 !indent=1
 !alignment=right
-!wifi_interface=iwx0
 !default_theme=1
+
 	
    ##############################
    # color settings		#

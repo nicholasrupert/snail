@@ -3,9 +3,6 @@
 use strict;
 use warnings;
 
-#use Term::ReadKey;
-
-use utf8;
 binmode(STDOUT, ":utf8");
 
 my @errors;
@@ -20,59 +17,91 @@ my @errors;
 # check what shell we're using
 # I don't actually think this makes a difference
 
-my $ACCEPTABLE_SHELLS = "bash|ksh|csh|zsh";
-my $shell;
-($shell)=(`echo \$SHELL`=~/($ACCEPTABLE_SHELLS)/);
-unless ($shell=~/$ACCEPTABLE_SHELLS/) {
-	die ( "Error: shell $shell not recognized\n");
+my @ACCEPTABLE_SHELLS = ("ksh", "bash");
+my $shell="err";
+foreach (@ACCEPTABLE_SHELLS) {
+	if (`whereis $_` =~ /\/$_/) {
+		$shell = $_;
+		last;
+	}
 }
-#print ("Shell: $shell\n");
+if ($shell eq "err") {
+	push (@errors, "Error: shell not recognized.\n");
+}
 
 # get operating system
 # determines which shell commands we got
 
-my $ACCEPTABLE_OS = "OpenBSD|Linux";
-my $os;
-($os)=(`uname -a`=~/($ACCEPTABLE_OS)/);
-unless ($os=~/$ACCEPTABLE_OS/) {
-	die ("Error: operating system $os not recognized\n");
-}
-#print ("OS: $os\n");
-
-# get terminal emulator
-# probably going to have to do better than this lol
-
-my $terminal="alacritty";
-
-#get sound mixer
-
-my @ACCEPTABLE_SOUND_MIXERS=("wpctl", "pamixer", "amixer", "sndioctl");
-my $sound_mixer="err";
-
-if ($os eq "OpenBSD") {
-	($sound_mixer)=(`whereis sndioctl`=~/(sndioctl)/);
-	unless ($sound_mixer eq "sndioctl") {
-		push (@errors, "Error: sound mixer not found\n");
+my @ACCEPTABLE_OS = ("OpenBSD", "Linux");
+my $os="err";
+my $uname_output = `uname -s`;
+foreach (@ACCEPTABLE_OS) {
+	if ($uname_output =~ /$_/) {
+		$os = $_;
+		last;
 	}
+}
+if ($os eq "err") {
+	push (@errors, "Error: operating system not recognized.\n");
+	die(@errors);
+}
+
+#get wifi command
+
+my @ACCEPTABLE_WIFI_COMMANDS = ("ifconfig");
+my $wifi_interface="err";
+if ($os eq "OpenBSD") {
+	$wifi_interface="iwx0";
 } elsif ($os eq "Linux") {
-	foreach (@ACCEPTABLE_SOUND_MIXERS) {
-		if (`whereis $_` =~ /$_:\s*\//) {
-			$sound_mixer = $_;
+	my $wifi_command;
+	my @raw_wifi_command_output;
+	foreach (@ACCEPTABLE_WIFI_COMMANDS) {
+		if (`whereis $_` =~ /\/$_/) {
+			$wifi_command = $_;
 			last;
 		}
 	}
-	if ($sound_mixer eq "err") {
-		push (@errors, "Error: sound mixer not found\n");
+	@raw_wifi_command_output = `$wifi_command`;
+	foreach (@raw_wifi_command_output) {
+		if ($_ =~ /^w.*BROADCAST/) {
+			($wifi_interface) = $_=~/^(w.*):/;
+			last;
+		}
+	}
+}	
+if ($wifi_interface eq "err") {
+	push (@errors, "Error: wifi interface not found.\n");
+}
+			
+
+#get sound mixer
+
+my @ACCEPTABLE_SOUND_MIXERS=("sndioctl", "wpctl", "pamixer", "amixer");
+my $sound_mixer="err";
+
+foreach (@ACCEPTABLE_SOUND_MIXERS) {
+	if (`whereis $_` =~ /\/$_/) {
+		$sound_mixer = $_;
+		last;
 	}
 }
-
-$sound_mixer="amixer";
-
-#print ("Sound mixer: $sound_mixer\n");
+if ($sound_mixer eq "err") {
+	push (@errors, "Error: sound mixer not found\n");
+}
 
 # get sensors command if linux
 
-my $sensor_command="sensors";
+my @ACCEPTABLE_SENSOR_COMMANDS = ("sensors");
+my $sensor_command="err";
+foreach (@ACCEPTABLE_SENSOR_COMMANDS) {
+	if (`whereis $_` =~ /\/$_/) {
+		$sensor_command = $_;
+		last;
+	}
+}
+if ($sensor_command eq "err") {
+	push (@errors, "Error: sound mixer not found\n");
+}
 
 #get VPN type
 # this check should really get moved to when we read the applet list
@@ -83,18 +112,14 @@ my $vpn="err";
 
 foreach (@ACCEPTABLE_VPNS) {
 	my $whereis_output=`whereis $_`;
-#	print ("in the vpn loop, on $whereis_output\n");
-	if ($whereis_output=~/.*\/\.*$_/) {
-#		print ("in the if\n");
-		($vpn)=($whereis_output=~/.*\/\.*($_)/);
-#		print ("VPN: $vpn matches $_\n");
+	if ($whereis_output=~/\/$_/) {
+		($vpn)=$_;
 		last;
 	}
 }
-unless (grep { $vpn eq $_ } @ACCEPTABLE_VPNS or $vpn eq "err") {
+if ($vpn eq "err") {
 	push (@errors, "Error: vpn $vpn not recognized\n");
 }
-#print ("VPN: $vpn\n");
 
 # get config file
 
@@ -109,17 +134,11 @@ foreach (@ACCEPTABLE_CONFIG_FILES) {
 		last;
 	}
 }
-#print("Config file: $config_file\n");
+
 
 #################################################
 #	Read and parse the config file					#
 #################################################
-
-my %settings; 
-my %colors;
-
-my $SMALL_DIVIDER=" ";
-my $BIG_DIVIDER=" | ";
 
 
 my @ACCEPTABLE_APPLETS=(
@@ -180,8 +199,11 @@ my @ACCEPTABLE_COLOR_NAMES= (
 	"LIGHT_BLUE",
 	"LIGHT_MAGENTA",
 	"LIGHT_CYAN",
+	"LIGHT_WHITE",
 	"WHITE",
-	"BLINK"
+	"BLINK",
+	"OLIVE",
+	"BROWN"
 );
 
 # default settings and flags so that we can be sure they all get set
@@ -205,7 +227,8 @@ my @ACCEPTABLE_SETTINGS=(
 	"battery_ok_threshold",
 	"battery_good_threshold"
 );
-%settings = (
+
+my %settings = (
 	"poll_delay" => ".5",
 	"small_applets" => "1",
 	"date_format" => "\%Y-\%m-\%d",
@@ -240,27 +263,33 @@ my %ANSI_COLORS = (
 	"LIGHT_BLUE" => "\e[1;94;40m",
 	"LIGHT_MAGENTA" => "\e[1;95;40m",
 	"LIGHT_CYAN" => "\e[1;96;40m",
-	"WHITE" => "\e[1;97;40m"
+	"LIGHT_WHITE" => "\e[1;97;40m",
+	"WHITE" => "\e[1;97;40m",
+	"OLIVE" => "\e[38;2;85;107;47m",
+	"BROWN" => "\e[38;2;90;76;3m"
 );
 
 my %DEFAULT_THEME_COLORS = (
-	"BLACK" => "\e]11;#000000",
-	"RED" => "\e]11;#ff5454",
-	"BLUE" => "\e]11;#74b2ff",
-	"GREEN" => "\e]11;#26cd4d",
-	"CYAN" => "\e]11;#85dc85",
-	"MAGENTA" => "\e]11;#ae81ff",
-	"YELLOW" => "\e]11;#c6c684",
-	"GREY" => "\e]11;#d9dee3",
-	"WHITE" => "\e]11;#f0f3f6"
+	"BLACK" => "\e[1m\e[38;2;0;0;0m",
+	"RED" => "\e[1m\e[38;2;255;84;84m",
+	"BLUE" => "\e[1m\e[38;2;116;178;255m",
+	"GREEN" => "\e[1m\e[38;2;38;205;77m",
+	"CYAN" => "\e[1m\e[38;2;133;220;133m",
+	"MAGENTA" => "\e[1m\e[38;2;174;129;255m",
+	"YELLOW" => "\e[1m\e[38;2;198;198;132m",
+	"GREY" => "\e[1m\e[38;2;217;222;227m",
+	"LIGHT_WHITE" => "\e[38;2;240;243;246m",
+	"LIGHT_RED" => "\e[38;2;255;84;84m",
+	"LIGHT_BLUE" => "\e[38;2;116;178;255m",
+	"LIGHT_GREEN" => "\e[38;2;38;205;77m",
+	"LIGHT_CYAN" => "\e[38;2;133;220;133m",
+	"LIGHT_MAGENTA" => "\e[38;2;174;129;255m",
+	"LIGHT_YELLOW" => "\e[38;2;198;198;132m",
+	"LIGHT_GREY" => "\e[38;2;217;222;227m",
+	"LIGHT_WHITE" => "\e[38;2;240;243;246m",
+	"LIGHT_OLIVE" => "\e[38;2;85;107;47m",
+	"LIGHT_BROWN" => "\e[38;2;90;76;3m"
 );
-#	[colors.primary]
-#background = "#000000"
-#foreground = "#f0f3f6" #from github dark high contrast
-
-#[colors.cursor]
-#text = "#0a0c10"
-#cursor = "#f0f3f6"
 
 # default colors get set here so that we can be sure all get set
 
@@ -315,6 +344,8 @@ my @small_applets;
 my $PREVIOUS_DISPLAY_STRING_CF="init";
 my $PREVIOUS_TERMINAL_HEIGHT=getTerminalHeight();
 my $too_small_to_show_applets_flag=0;
+my $DEGREE_SYMBOL="\xb0";
+
 
 my $LOGO_WIDTH = 3;
 
@@ -334,7 +365,6 @@ unless ($config_file eq "DEFAULTS") {
 			unless (grep { $1 eq $_ } @ACCEPTABLE_APPLETS) {
 				die ("Error: applet $1 in RTL order not recognized\n");
 			}
-			#print ("RTL order: $1\n");
 			$RTL_list{$1} = $RTL_list{$previous_applet};
 			$RTL_list{$previous_applet} = $1;
 			$previous_applet = $1;
@@ -361,8 +391,6 @@ unless ($config_file eq "DEFAULTS") {
 
 		# anticomment character for special settings is !
 		# form is !setting=number
-		
-		#kinda want to change this to % but not now
 		elsif ($_=~/^!(.*)=/) {
 			unless (grep { $1 eq $_ } @ACCEPTABLE_SETTINGS) {
 				die ("Error: special setting $1 not recognized\n");
@@ -371,6 +399,7 @@ unless ($config_file eq "DEFAULTS") {
 			($settings{$k})=($_=~/=(.*)/);
 			#print ("Special setting $k set: $settings{$k}\n");
 		}
+
 		# anticomment character for color settings is $
 		# form is $COLOR_CLASS_NAME=COLOR_NAME
 		elsif ($_=~/^\$(.*)=/) {
@@ -398,21 +427,20 @@ unless ($config_file eq "DEFAULTS") {
 	close ($config_readline);
 } else {  # default settings
 	%RTL_list = ( # check this against the array before changing
-		"head"=>"small_applets",
-		"small_applets"=>"time",
+		"head"=>"time",
 		"time" => "date",
 		"date" => "battery_ac",
-		"battery_ac" => "fan_speed",
-		"fan_speed" => "cpu_temp",
-		"cpu_temp" => "wifi",
-		"wifi" => "vpn",
-		"vpn" => "volume",
+		"battery_ac" => "wifi",
+		"wifi" => "volume",
 		"volume" => "tail"		
 	);
-#	$number_of_small_applets=0;
-#	$date_and_time_adjacent=1;
-	# default special, flag, and color settings already set
-	#print ("Using defaults. No config file opened.\n");
+	@priority_array = (
+		"time",
+		"date",
+		"battery_ac",
+		"wifi",
+		"volume"
+	);
 }
 
 # check for snail logo
@@ -424,22 +452,46 @@ if ($settings{"snail_logo"} eq "false" or $settings{"snail_logo"} eq "no" or int
 # check for hardcoded theme
 
 if ($settings{"default_theme"} eq "true" or $settings{"default_theme"} eq "yes" or $settings{"default_theme"} eq 1) {
-	$ANSI_COLORS{"WHITE"}=$DEFAULT_THEME_COLORS{"WHITE"};
-	$ANSI_COLORS{"GREY"}=$DEFAULT_THEME_COLORS{"GREY"};
-	$ANSI_COLORS{"BLUE"}=$DEFAULT_THEME_COLORS{"BLUE"};
-	$ANSI_COLORS{"RED"}=$DEFAULT_THEME_COLORS{"RED"};
-	$ANSI_COLORS{"GREEN"}=$DEFAULT_THEME_COLORS{"GREEN"};
-	$ANSI_COLORS{"YELLOW"}=$DEFAULT_THEME_COLORS{"YELLOW"};
-	$ANSI_COLORS{"CYAN"}=$DEFAULT_THEME_COLORS{"CYAN"};
-	$ANSI_COLORS{"MAGENTA"}=$DEFAULT_THEME_COLORS{"MAGENTA"};
-	$ANSI_COLORS{"BLACK"}=$DEFAULT_THEME_COLORS{"BLACK"};
-	$ANSI_COLORS{"LIGHT_GREY"}=$DEFAULT_THEME_COLORS{"GREY"};
-	$ANSI_COLORS{"LIGHT_BLUE"}=$DEFAULT_THEME_COLORS{"BLUE"};
-	$ANSI_COLORS{"LIGHT_RED"}=$DEFAULT_THEME_COLORS{"RED"};
-	$ANSI_COLORS{"LIGHT_GREEN"}=$DEFAULT_THEME_COLORS{"GREEN"};
-	$ANSI_COLORS{"LIGHT_YELLOW"}=$DEFAULT_THEME_COLORS{"YELLOW"};
-	$ANSI_COLORS{"LIGHT_CYAN"}=$DEFAULT_THEME_COLORS{"CYAN"};
-	$ANSI_COLORS{"LIGHT_MAGENTA"}=$DEFAULT_THEME_COLORS{"MAGENTA"};
+	%ANSI_COLORS = (
+		"WHITE"=> $DEFAULT_THEME_COLORS{"WHITE"},
+		"GREY" => $DEFAULT_THEME_COLORS{"GREY"},
+		"BLUE" => $DEFAULT_THEME_COLORS{"BLUE"},
+		"RED" => $DEFAULT_THEME_COLORS{"RED"},
+		"GREEN" => $DEFAULT_THEME_COLORS{"GREEN"},
+		"YELLOW" => $DEFAULT_THEME_COLORS{"YELLOW"},
+		"CYAN" => $DEFAULT_THEME_COLORS{"CYAN"},
+		"MAGENTA" => $DEFAULT_THEME_COLORS{"MAGENTA"},
+		"BLACK" => $DEFAULT_THEME_COLORS{"BLACK"},
+		"LIGHT_GREY" => $DEFAULT_THEME_COLORS{"LIGHT_GREY"},
+		"LIGHT_BLUE" => $DEFAULT_THEME_COLORS{"LIGHT_BLUE"},
+		"LIGHT_RED" => $DEFAULT_THEME_COLORS{"LIGHT_RED"},
+		"LIGHT_GREEN" => $DEFAULT_THEME_COLORS{"LIGHT_GREEN"},
+		"LIGHT_YELLOW" => $DEFAULT_THEME_COLORS{"LIGHT_YELLOW"},
+		"LIGHT_CYAN" => $DEFAULT_THEME_COLORS{"LIGHT_CYAN"},
+		"LIGHT_MAGENTA" => $DEFAULT_THEME_COLORS{"LIGHT_MAGENTA"},
+		"OLIVE" => "\e[1m\e[38;2;85;107;47m",
+		"BROWN" => "\e[1m\e[38;2;90;76;3m"
+	);
+	%COLORS = (
+		"LABEL" => $ANSI_COLORS{"LIGHT_GREY"},
+		"NUMBER" => $ANSI_COLORS{"LIGHT_CYAN"},
+		"VOLUME" => $ANSI_COLORS{"LIGHT_CYAN"},
+		"MUTE" => $ANSI_COLORS{"GREEN"},
+		"TIME" => $ANSI_COLORS{"YELLOW"},
+		"COLON" => $ANSI_COLORS{"LIGHT_GREY"},
+		"DASH" => $ANSI_COLORS{"LIGHT_GREY"},
+		"UNITS" => $ANSI_COLORS{"LIGHT_GREY"},
+		"DATE" => $ANSI_COLORS{"CYAN"},
+		"SMALL_DIVIDER" => $ANSI_COLORS{"GREY"},
+		"DIVIDER" => $ANSI_COLORS{"LIGHT_BLUE"},
+		"BAD" => $ANSI_COLORS{"LIGHT_RED"},
+		"GOOD" => $ANSI_COLORS{"GREEN"},
+		"NORMAL" => $ANSI_COLORS{"LIGHT_GREY"},
+		"BLINK_1" => $ANSI_COLORS{"RED"},
+		"BLINK_2" => $ANSI_COLORS{"YELLOW"},
+	#	"VERY_BAD" => "BLINK", # its special
+		"BACKGROUND" => $ANSI_COLORS{"BLACK"}
+	);
 }
 
 # check that all applets in priority listing are in RTL listing
@@ -450,15 +502,12 @@ foreach (@priority_array) {
 		die ("Error: applet $_ appears in priority list but not in RTL list\n");
 	}
 }
-#print ("All applets in priority list appear in RTL list.\n");
+
 
 #########################################################
 #	Figure out how big the window is and which	#
 #	applets to display				#
 #########################################################
-
-#redo max widths to change depending on settings
-# e.g. if they wanted a shorter or longer date format
 
 
 sub addAppletLTR {
@@ -529,26 +578,6 @@ sub eraseLTRLists {
 	@display_divided_LTR_array = ("tail");
 }
 
-sub debugShit {
-
-my $init="head";
-for (my $i=0; $i<50; $i++) {
-	#print ("Display LTR: $display_LTR_list{$init}\n");
-	if ($display_LTR_list{$init} eq "tail") {
-		last;
-	} else {
-		$init=$display_LTR_list{$init};
-	}
-}
-
-for (my $i=0; $i<@display_divided_LTR_array and $display_divided_LTR_array[$i] ne "tail"; $i++) {
-	#print ($display_divided_LTR_array[$i]);
-	#print (" ");
-}
-#print ("\n");
-
-getDisplayStringMaxWidth();
-}
 
 sub getTerminalWidth {
 	return (`tput cols`);
@@ -696,7 +725,6 @@ sub getVolumeNFCF {
 				$nf = "audio $volume\%";
 				$cf = $COLORS{"LABEL"}."audio ".$COLORS{"NUMBER"}.$volume.$COLORS{"UNITS"}."\%";
 			}
-	#		print ("volume: $volume\n");
 		} elsif ($sound_mixer eq "amixer") {
 			my @rawvol = `amixer get Master | tail -2`;
 			$volume = "err";
@@ -722,15 +750,9 @@ sub getVolumeNFCF {
 					$nf = "audio $volume\%";
 					$cf = $COLORS{"LABEL"}."audio ".$COLORS{"NUMBER"}.$volume.$COLORS{UNITS}."\%";
 				}
-			}
-			
-		#	if ($volume eq "") {
-		#		$volume = "err";
-		#	}		
-			
+			}			
 		} elsif ($sound_mixer eq "wpctl") {
 			$volume = `wpctl get-volume \@DEFAULT_AUDIO_SINK\@`;
-		#	print ("volume: $volume\n");
 			if ($volume =~ /MUTED/) {
 				$volume = "muted";
 				$nf = "audio $volume";
@@ -745,8 +767,6 @@ sub getVolumeNFCF {
 		}
 				
 	}
-	#	print ("volume: $volume\n");
-
 		
 	return ($nf, $cf);
 	
@@ -785,7 +805,6 @@ sub getWifiNFCF {
 		
 		return ($nf, $cf);
 	} elsif ($os eq "Linux") {
-	#	print ("getting wifi\n");
 		my $interface = $settings{"wifi_interface"};
 		my @rawwifi = split( /\n/, `ifconfig $interface`);
 		my $nf="NONE";
@@ -934,13 +953,7 @@ sub getCPUTempNFCF {
 	my $cf="";
 	my $cpu_temp="err";
 	my $c_or_f="C";
-	my $DEGREE_SYMBOL="";
-	if ($os eq "OpenBSD") {
-		$DEGREE_SYMBOL="\xb0";
-	}
-	if ($os eq "Linux") {
-		$DEGREE_SYMBOL="\xb0";
-	}
+	
 	if ($os eq "OpenBSD") {
 		my @raw_cpu_output=split(/\n/,`sysctl hw.sensors`);
 		foreach (@raw_cpu_output) {
@@ -986,49 +999,38 @@ sub getDisplayStringsNFCF() { #mostly for debugging at this point
 	
 	my $dscf=""; #display string color formatted
 	my $dsnf=""; #display string not formatted
+	my $new_applet_nf="";
+	my $new_applet_cf="";
 	my $stopper = 50;
 	
+	
 	for (my $i=0; $i<@display_divided_LTR_array and $i<$stopper; $i++) {
-#		#print ("$display_divided_LTR_array[$i]\n");
-		if ($display_divided_LTR_array[$i] eq "date") {
-			my ($datenf, $datecf) = getDateNFCF();
-			$dscf .= $datecf;
-			$dsnf .= $datenf;
-		} elsif ($display_divided_LTR_array[$i] eq "time") {
-			my ($timenf, $timecf) = getTimeNFCF();
-			$dscf .= $timecf;
-			$dsnf .= $timenf;
-		} elsif ($display_divided_LTR_array[$i] eq "volume") {
-			my ($volumenf, $volumecf) = getVolumeNFCF();
-			$dscf .= $volumecf;
-			$dsnf .= $volumenf;
-			#print ($dscf);
-		} elsif ($display_divided_LTR_array[$i] eq "wifi") {
-			my ($wifinf, $wificf) = getWifiNFCF();
-			$dscf .= $wificf;
-			$dsnf .= $wifinf;
-#			#print ($dscf);
-		} elsif ($display_divided_LTR_array[$i] eq "battery_ac") {
-			my ($batnf, $batcf) = getBatNFCF();
-			$dscf .= $batcf;
-			$dsnf .= $batnf;
-		} elsif ($display_divided_LTR_array[$i] eq "fan_speed") {
-			my ($fannf, $fancf) = getFanSpeedNFCF();
-			$dscf .= $fancf;
-			$dsnf .= $fannf;
-		} elsif ($display_divided_LTR_array[$i] eq "cpu_temp") {
-			my ($cpunf, $cpucf) = getCPUTempNFCF();
-			$dscf .= $cpucf;
-			$dsnf .= $cpunf;
-		} elsif ($display_divided_LTR_array[$i] eq "vpn") {
-			my ($vpnnf, $vpncf) = getVPN_NFCF();
-			$dscf .= $vpncf;
-			$dsnf .= $vpnnf;
-		} elsif ($display_divided_LTR_array[$i] eq "tail") {
-			$too_small_to_show_applets_flag=1;
+		unless ($display_divided_LTR_array[$i] eq "tail") {
+			if ($display_divided_LTR_array[$i] eq "date") {
+				($new_applet_nf, $new_applet_cf) = getDateNFCF();
+			} elsif ($display_divided_LTR_array[$i] eq "time") {
+				($new_applet_nf, $new_applet_cf) = getTimeNFCF();
+			} elsif ($display_divided_LTR_array[$i] eq "volume") {
+				($new_applet_nf, $new_applet_cf) = getVolumeNFCF();
+			} elsif ($display_divided_LTR_array[$i] eq "wifi") {
+				($new_applet_nf, $new_applet_cf) = getWifiNFCF();
+			} elsif ($display_divided_LTR_array[$i] eq "battery_ac") {
+				($new_applet_nf, $new_applet_cf) = getBatNFCF();
+			} elsif ($display_divided_LTR_array[$i] eq "fan_speed") {
+				($new_applet_nf, $new_applet_cf) = getFanSpeedNFCF();
+			} elsif ($display_divided_LTR_array[$i] eq "cpu_temp") {
+				($new_applet_nf, $new_applet_cf) = getCPUTempNFCF();
+			} elsif ($display_divided_LTR_array[$i] eq "vpn") {
+				($new_applet_nf, $new_applet_cf) = getVPN_NFCF();
+			}  else {
+				push (@errors, "Error: cannot print applet $display_divided_LTR_array[$i]\n");
+			}
+			$dsnf .= $new_applet_nf;
+			$dscf .= $new_applet_cf;
 		} else {
-			die ("Error: cannot print applet $display_divided_LTR_array[$i]\n");
+			$too_small_to_show_applets_flag=1;
 		}
+
 		if (exists $display_divided_LTR_array[$i+1] and 
 				$display_divided_LTR_array[$i+1] ne "tail" 
 					and $display_divided_LTR_array[$i+1] ne "") {
@@ -1039,7 +1041,6 @@ sub getDisplayStringsNFCF() { #mostly for debugging at this point
 		} else {
 			$i=50;
 		}
-#		$display_string += "\n"; # right now I like it with no line breaks
 	}
 	my $leading_spaces=getLeadingSpaces($dsnf);
 	$dsnf = $leading_spaces.$dsnf;
@@ -1054,9 +1055,7 @@ sub getLeadingSpaces { # takes display string with no formatting as an arg
 	my $terminal_width = getTerminalWidth();
 	my $leading_spaces="";
 	my $indent=$settings{"indent"};
-	#if ( $length > $terminal_width+$indent) {
-	#	die ("Error: display string width $length, terminal width only $terminal_width.\n");
-	#} els
+	
 	if ($settings{"alignment"} eq "left") {
 		$leading_spaces = ' 'x ($indent+$LOGO_WIDTH);
 	} elsif ($settings{"alignment"} eq "center") {
@@ -1068,9 +1067,6 @@ sub getLeadingSpaces { # takes display string with no formatting as an arg
 		$leading_spaces = ' ' x $n;
 	} else { # defaults to right aligned
 		my $n = ($terminal_width-$length-$indent);
-#		print ("terminal width: $terminal_width\n");
-#		print ("display string length: $length\n");
-#		print ("leading spaces: $n\n");
 		if ($n < 0) {
 			$n=0;
 			push (@errors, "Error: negative leading spaces\n");
@@ -1084,19 +1080,14 @@ sub getFirstPriorityAppletMaxWidth {
 	if (exists $priority_array[0]) {
 		return ($APPLETS_MAX_WIDTHS{$priority_array[0]});
 	} else {
-		die ("First priority applet not found.\n");
+		push (@errors, "First priority applet not found.\n");
 	}
 }
 
 sub printApplets {
 	my ($dsnf, $dscf) = getDisplayStringsNFCF();
-	#my $trailing_spaces = ' ' x $settings{"indent"};
-	#$dscf=$dscf.$trailing_spaces;
 
-	# if too small for a single applet, print empty spaces
 	if (getTerminalWidth() < getFirstPriorityAppletMaxWidth()+2+$settings{"indent"}) {
-	#	my $empty_string = ' ' x getTerminalWidth();
-	#	print ("\r$empty_string");
 		clearScreen();
 	} else {
 		if ($dscf ne $PREVIOUS_DISPLAY_STRING_CF
@@ -1108,6 +1099,7 @@ sub printApplets {
 			
 		}
 	}
+
 	# print a snail logo
 	if ($settings{"snail_logo"} eq "1") {
 		printSnailLogo();
@@ -1120,14 +1112,12 @@ sub setCursorInvisible {
 	print ("\e[?25l");
 }
 
-sub setCursorVisible {
-	#print ("\e]12;#FFFFFF\a");
-	print ("\e[?25h");
-}
+#sub setCursorVisible {
+#	print ("\e[?25h");
+#}
 
 sub setBackgroundBlack {
 	print ("\r\e]11;#000000\r");
-#	print ("\e[2K"); # escape sequence to delete entire line
 	my $empty_string = ' ' x getTerminalWidth();
 	print ("\r$empty_string");	
 }
@@ -1142,7 +1132,8 @@ sub clearScreen {
 }
 
 sub printSnailLogo() {
-	print ("\r\e[38;2;85;107;47m_\e[38;2;90;76;3m\@\e[38;2;85;107;47my$COLORS{NORMAL}"); #snail logo
+	print ("\r");
+	print ($ANSI_COLORS{"OLIVE"}."_".$ANSI_COLORS{"BROWN"}."\@".$ANSI_COLORS{"OLIVE"}."y".$COLORS{"NORMAL"}); #snail logo
 }
 
 #### this one just resets the cursor color before exiting
@@ -1150,9 +1141,7 @@ sub printSnailLogo() {
 # this code just has to be somewhere above where we actually print stuff
 
 $SIG{INT} = sub {
-	setCursorVisible();
-#	setBackgroundBlack();
-#	print ("\e[0m");
+#	setCursorVisible();
 	print ("\n");
 	exit (0);
 };
@@ -1174,13 +1163,8 @@ $| = 1; # this is to make sleep() actually work
 
 while (1) {
 	sleep ($settings{"poll_delay"});
-#	my $test = "x";  
 	setAppletsMaxWidths();
-#	eraseLTRLists();
-#	print (" ");
 	printApplets();
-#	$i++;
-	#	sleep ($settings{"poll_delay"});
 }
 
 
