@@ -795,8 +795,10 @@ sub getWifiNFCF {
 			}
 		}
 		if ($nf eq "NONE") {
-			die ("Error: unable to read status of wifi interface $interface.\n");
+			push (@errors, "Error: unable to read status of wifi interface $interface.\n");
+			$wifi_interface="err";
 		}
+		
 		chomp ($nf);
 
 		if (length($nf) > $APPLETS_MAX_WIDTHS{"wifi"}) {
@@ -830,7 +832,10 @@ sub getWifiNFCF {
 		if (length($nf) > $APPLETS_MAX_WIDTHS{"wifi"}) {
 			die ("Error: volume string too long.\n");
 		}
-		
+		if ($wifi_interface eq "err") {
+			$nf = "wifi err";
+			$cf = $COLORS{"LABEL"}."wifi ".$COLORS{"BAD"}."err";
+		}
 		return ($nf, $cf);
 	}
 }
@@ -843,7 +848,6 @@ sub getBatNFCF {
 	
 	my $bat_or_ac_read=0;
 	my $bat_capacity_read=0;
-	
 	if ($os eq "OpenBSD") {
 		my @apm_output = split(/\n/, `apm`);
 
@@ -1031,12 +1035,10 @@ sub getDisplayStringsNFCF() { #mostly for debugging at this point
 			$too_small_to_show_applets_flag=1;
 		}
 
-		if (exists $display_divided_LTR_array[$i+1] and 
-				$display_divided_LTR_array[$i+1] ne "tail" 
-					and $display_divided_LTR_array[$i+1] ne "") {
+		if (exists $display_divided_LTR_array[$i+1] and $display_divided_LTR_array[$i+1] ne "tail" and $display_divided_LTR_array[$i+1] ne "") {
 			$dscf .= $COLORS{"DIVIDER"};
 			$dscf .= $DIVIDERS{$display_divided_LTR_array[$i+1]};
-			$dsnf .= $DIVIDERS{$display_divided_LTR_array[$i+1]};
+			$dsnf .= $DIVIDERS{$display_divided_LTR_array[$i+1]};  #what the fuck is this how does this work lmao
 			$i++;
 		} else {
 			$i=50;
