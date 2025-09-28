@@ -74,6 +74,8 @@ sub generateOutputArray {
 	return @output_array;
 }
 
+generateOutputArray(5);
+
 print ("Priority array:\n");
 foreach (@priority_array) {
 	print ("$_\n");
