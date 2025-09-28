@@ -35,7 +35,7 @@ my @priority_array = (
 );
 	
 	
-my @left_to_right_array = (
+my %left_to_right_array = (
 	"lamp",
 	"Homer Simpson",
 	"pulneni chushki",
@@ -64,11 +64,7 @@ sub generateOutputArray {
 	
 	my $n = $_[0];
 	
-	###############################
-	#                             #    
-	#  ok dog put your code here  #
-	#                             #
-	###############################
+	
 	
 	
 	return @output_array;
