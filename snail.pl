@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use strict;
+#use strict;
 use warnings;
 
 binmode(STDOUT, ":utf8");
@@ -13,21 +13,6 @@ my @errors;
 #################################################
 #	Get all of the relevant system settings		#
 #################################################
-
-# check what shell we're using
-# I don't actually think this makes a difference
-
-my @ACCEPTABLE_SHELLS = ("ksh", "bash");
-my $shell="err";
-foreach (@ACCEPTABLE_SHELLS) {
-	if (`whereis $_` =~ /\/$_/) {
-		$shell = $_;
-		last;
-	}
-}
-if ($shell eq "err") {
-	push (@errors, "Error: shell not recognized.\n");
-}
 
 # get operating system
 # determines which shell commands we got
@@ -87,6 +72,7 @@ foreach (@ACCEPTABLE_SOUND_MIXERS) {
 }
 if ($sound_mixer eq "err") {
 	push (@errors, "Error: sound mixer not found\n");
+	die (@errors);
 }
 
 # get sensors command if linux
@@ -99,8 +85,8 @@ foreach (@ACCEPTABLE_SENSOR_COMMANDS) {
 		last;
 	}
 }
-if ($sensor_command eq "err") {
-	push (@errors, "Error: sound mixer not found\n");
+if ($sensor_command eq "err" and $os eq "Linux") {
+	push (@errors, "Error: sensors not found\n");
 }
 
 #get VPN type
@@ -238,7 +224,8 @@ my %settings = (
 	"indent" => "1", #indent less than one totally fucks everything if right-aligned
 	"cursor" => "left",
 	"snail_position" => "left",
-	"snail_logo" => "1"
+	"snail_logo" => "1",
+	"default_theme" => "1"
 );
 
 
@@ -337,8 +324,7 @@ my $number_of_small_applets=0;
 my $SMALL_APPLETS_WIDTH=1;
 
 my @priority_array;
-my %RTL_list = ("head" => "tail");
-my %display_LTR_list = ("head" => "tail");
+my @RTL_array;
 my @display_divided_LTR_array;
 my @small_applets;
 my $PREVIOUS_DISPLAY_STRING_CF="init";
@@ -365,9 +351,7 @@ unless ($config_file eq "DEFAULTS") {
 			unless (grep { $1 eq $_ } @ACCEPTABLE_APPLETS) {
 				die ("Error: applet $1 in RTL order not recognized\n");
 			}
-			$RTL_list{$1} = $RTL_list{$previous_applet};
-			$RTL_list{$previous_applet} = $1;
-			$previous_applet = $1;
+			push (@RTL_array, $1);
 		} 
 		# anticomment character for appearance/disappearance priority is &
 		elsif ($_=~/^&(.*)/) {
@@ -408,7 +392,7 @@ unless ($config_file eq "DEFAULTS") {
 			if (grep { $1 eq $_ } @ACCEPTABLE_COLOR_CLASSES) {
 				$color_class = $1;
 			} else {
-				die ("Error: color class $1 not recognized\n");
+				push (@errors, "Error: color class $1 not recognized\n");
 			}			
 			
 			($color_name) = ($_=~/=(.*)/);
@@ -416,7 +400,7 @@ unless ($config_file eq "DEFAULTS") {
 				$COLORS{$color_class}=$ANSI_COLORS{$color_name};
 				#print ("Color class $color_class set: $color_name\n");
 			} else {
-				die ("Error: color name $1 not recognized\n");
+				push (@errors, "Error: color name $1 not recognized\n");
 			}
 		}
 		# no else here, because everything else is ignored
@@ -426,13 +410,12 @@ unless ($config_file eq "DEFAULTS") {
 	}
 	close ($config_readline);
 } else {  # default settings
-	%RTL_list = ( # check this against the array before changing
-		"head"=>"time",
-		"time" => "date",
-		"date" => "battery_ac",
-		"battery_ac" => "wifi",
-		"wifi" => "volume",
-		"volume" => "tail"		
+	@RTL_array = ( # check this against the array before changing
+		"time",
+		"date",
+		"battery_ac",
+		"wifi",
+		"volume"		
 	);
 	@priority_array = (
 		"time",
@@ -497,11 +480,11 @@ if ($settings{"default_theme"} eq "true" or $settings{"default_theme"} eq "yes" 
 # check that all applets in priority listing are in RTL listing
 
 
-foreach (@priority_array) {
-	unless (exists $RTL_list{$_}) {
-		die ("Error: applet $_ appears in priority list but not in RTL list\n");
-	}
-}
+#foreach (@priority_array) {
+#	unless (exists @RTL_list{$_}) {
+#		die ("Error: applet $_ appears in priority list but not in RTL list\n");
+#	}
+#}
 
 
 #########################################################
@@ -509,75 +492,80 @@ foreach (@priority_array) {
 #	applets to display				#
 #########################################################
 
-
-sub addAppletLTR {
-	# arg 1: priority index of applet to add
-	
-	my $index=$_[0];
-	my $applet=$priority_array[$index];
-	#print ("Adding $applet\n");
-	my $window=$RTL_list{$applet};
-	my $stopper=0;
-	
-	# runs through the RTL priority list, starting at the app to left
-	# the first app that is present in the displayed list is the one
-	# directly to the left of the app to add. so insert app to add directly
-	# after it in the display LTR list.
-	
-	while ($window ne "tail" and $stopper < 50) {
-		if (grep { $window eq $_ } %display_LTR_list) {
-			$display_LTR_list{$applet}=$display_LTR_list{$window};
-			$display_LTR_list{$window}=$applet;
-			$stopper=100;
+sub generateUndividedAppletDisplayListRTL {
+	my $n=$_[0];
+	my %display_flags;
+	my @output_ordered_list;
+	for (my $i=0; $i<$n; $i++) {
+		$display_flags{$priority_array[$i]}=1;
+	}
+	foreach (@RTL_array) {
+		if (exists $display_flags{$_}) {
+			push (@output_ordered_list, $_);
 		}
-		$window=$RTL_list{$window};				 
-		$stopper++;
 	}
-	# if we didn't add it already, it must be first
-	if ($stopper < 100) {	
-		$display_LTR_list{$applet}=$display_LTR_list{"head"};
-		$display_LTR_list{"head"}=$applet;
-	}
+	return (@output_ordered_list);
 }
 
-sub getDisplayStringMaxWidth {
-	my $width=0;
-	for (my $i=0; $i<@display_divided_LTR_array and $display_divided_LTR_array[$i] ne "tail"; $i++) {
-		$width+=$APPLETS_MAX_WIDTHS{$display_divided_LTR_array[$i]};
+sub generateDividedAppletDisplayListRTL {
+	my $n=$_[0];
+	my @undivided_array=generateUndividedAppletDisplayListRTL($n);
+	my @divided_array;
+	
+	if (exists $undivided_array[0]) {
+		push (@divided_array, $undivided_array[0]);
 	}
-	#print ("$width\n");
-	return ($width);
-}
-
-sub addDividers {
-	my $index = 0;
-	my $window = $display_LTR_list{"head"};
-	my $stopper = 0;
-	while ($window ne "tail" and $stopper<50) {
-		$display_divided_LTR_array[$index] = $window;
-		$index++;
-		
-		if ($display_LTR_list{$window} eq "tail") {
-			$display_divided_LTR_array[$index] = "tail";
-			$stopper=100;
-		} elsif (($window eq "date" or $window eq "time" or $window eq "small_applets") and
-			($display_LTR_list{$window} eq "date" or $display_LTR_list{$window} eq "time" or
-			$display_LTR_list{$window} eq "small_applets")) {
-				$display_divided_LTR_array[$index]= "small_divider";
-		} else { 
-			$display_divided_LTR_array[$index] = "big_divider";
+	
+	for (my $i=1; $i<@undivided_array; $i++) {
+		if ( ($undivided_array[$i] eq "date" and $undivided_array[$i-1] eq "time")
+			or ($undivided_array[$i] eq "time" and $undivided_array[$i-1] eq "date") ) {
+			push (@divided_array, "small_divider");
+		} else {
+			push (@divided_array, "big_divider");
 		}
-		$window=$display_LTR_list{$window};
-		$index++;
-		$stopper++;
+		push (@divided_array, $undivided_array[$i]);
 	}
+	
+	return (@divided_array);
 }
 
-sub eraseLTRLists {
-	%display_LTR_list = ("head" => "tail");
-	@display_divided_LTR_array = ("tail");
+sub getAppletListMaxLength {
+	my @divided_array=@_;
+	my $max_length=0;
+	
+	setAppletsMaxWidths();
+	
+	foreach (@divided_array) {
+		$max_length += $APPLETS_MAX_WIDTHS{$_};
+	}
+	$max_length += 2*$settings{"indent"};
+	
+	if ($settings{"snail_logo"} eq "yes" or $settings{"snail_logo"} eq "true" or
+		int($settings{"snail_logo"})>0) {
+		$max_length+=3;
+	}
+	return($max_length);
 }
 
+sub generateDisplayLTRArray { #no args
+	my @display_RTL_array;
+
+	# it is easier to start at the top and work our way down
+	# because then the first one under max length, just keep it
+	# if we work our way up, we have to overshoot and then step back
+	for (my $i=@priority_array; $i>0; $i--) {
+		@display_RTL_array=generateDividedAppletDisplayListRTL($i);
+		if ( getAppletListMaxLength(@display_RTL_array)<=getTerminalWidth() ) {
+			last;
+		}
+	}
+	
+	# it makes more sense as a user input setting RTL
+	# but it makes more sense to display as LTR.
+	# so flip it.
+
+	return ( reverse(@display_RTL_array) );
+}
 
 sub getTerminalWidth {
 	return (`tput cols`);
@@ -595,34 +583,13 @@ sub setAppletsMaxWidths {
 
 #########################################
 #					#
-# actually get the displayed applets	#
+# actually make the applets	#
 #					#
 #########################################	
 
-sub setAppletsToDisplay () {
-	eraseLTRLists();
-	my $MAX_WIDTH=getTerminalWidth()-2*$settings{"indent"}-$LOGO_WIDTH;
-	my $display_width=$settings{"indent"};
-	my $applet_counter=0;
-	while ($display_width<$MAX_WIDTH and $applet_counter<@priority_array and
-		$applet_counter<50) {
-			addAppletLTR($applet_counter);
-			addDividers();
-			$display_width=getDisplayStringMaxWidth();
-			$applet_counter++;
-	}
-	if ($display_width > $MAX_WIDTH) {
-		eraseLTRLists();
-		for (my $i=0; $i<$applet_counter-1 and $i<50; $i++) {
-			addAppletLTR($i);
-		}
-		addDividers();
-	}
-}
-
 # NF = not formatted; CF = color formatted
 
-sub getDateNFCF {
+sub get_date_NFCF {
 	my $date_format=$settings{"date_format"};
 	my $raw_date = `date +$date_format`;
 	my $nf="";
@@ -650,7 +617,7 @@ sub getDateNFCF {
 	return ($nf, $cf); #returns both. we need unformatted for a character count at the end
 }
 
-sub getTimeNFCF {
+sub get_time_NFCF {
 	my $raw_time = `date +$settings{"time_format"}`;
 	my $nf="";
 	my $cf="";
@@ -675,7 +642,7 @@ sub getTimeNFCF {
 	return ($nf, $cf);
 }
 
-sub getVolumeNFCF {
+sub get_volume_NFCF {
 	my $nf="NONE";
 	my $cf="";
 	if ($os eq "OpenBSD") {
@@ -772,7 +739,7 @@ sub getVolumeNFCF {
 	
 }
 
-sub getWifiNFCF {
+sub get_wifi_NFCF {
 	if ($os eq "OpenBSD") { #right now just works with ifocnfig
 		my $interface = $settings{"wifi_interface"};
 		my @rawwifi = split( /\n/, `ifconfig $interface`);
@@ -840,7 +807,7 @@ sub getWifiNFCF {
 	}
 }
 
-sub getBatNFCF {
+sub get_battery_ac_NFCF {
 	my $nf="";
 	my $cf="";
 	my $bat_or_ac="";
@@ -886,7 +853,7 @@ sub getBatNFCF {
 	return ($nf, $cf);
 }
 
-sub getVPN_NFCF { # only works for mullvad on linux rn
+sub get_vpn_NFCF { # only works for mullvad on linux rn
 	my $nf="";
 	my $cf="";
 	my @raw_vpn_output;
@@ -913,7 +880,7 @@ sub getVPN_NFCF { # only works for mullvad on linux rn
 	return ($nf,$cf);
 }
 
-sub getFanSpeedNFCF {
+sub get_fan_speed_NFCF {
 	my $nf="";
 	my $cf="";
 	my $rpms="";
@@ -952,7 +919,7 @@ sub getFanSpeedNFCF {
 	return ($nf, $cf);
 }
 
-sub getCPUTempNFCF {
+sub get_cpu_temp_NFCF {
 	my $nf="";
 	my $cf="";
 	my $cpu_temp="err";
@@ -996,53 +963,31 @@ sub getCPUTempNFCF {
 	}
 	return ($nf, $cf);
 }	
+
+sub get_small_divider_NFCF {
+	my $nf =$DIVIDERS{"small_divider"};
+	my $cf =$COLORS{"DIVIDER"}.$DIVIDERS{"small_divider"}.$COLORS{"NORMAL"};
+	return ($nf, $cf);
+}
+
+sub get_big_divider_NFCF {
+	my $nf =$DIVIDERS{"big_divider"};
+	my $cf =$COLORS{"DIVIDER"}.$DIVIDERS{"big_divider"}.$COLORS{"NORMAL"};
+	return ($nf, $cf);
+}
 			
 
-sub getDisplayStringsNFCF() { #mostly for debugging at this point
-	setAppletsToDisplay();
-	
-	my $dscf=""; #display string color formatted
-	my $dsnf=""; #display string not formatted
-	my $new_applet_nf="";
-	my $new_applet_cf="";
-	my $stopper = 50;
-	
-	
-	for (my $i=0; $i<@display_divided_LTR_array and $i<$stopper; $i++) {
-		unless ($display_divided_LTR_array[$i] eq "tail") {
-			if ($display_divided_LTR_array[$i] eq "date") {
-				($new_applet_nf, $new_applet_cf) = getDateNFCF();
-			} elsif ($display_divided_LTR_array[$i] eq "time") {
-				($new_applet_nf, $new_applet_cf) = getTimeNFCF();
-			} elsif ($display_divided_LTR_array[$i] eq "volume") {
-				($new_applet_nf, $new_applet_cf) = getVolumeNFCF();
-			} elsif ($display_divided_LTR_array[$i] eq "wifi") {
-				($new_applet_nf, $new_applet_cf) = getWifiNFCF();
-			} elsif ($display_divided_LTR_array[$i] eq "battery_ac") {
-				($new_applet_nf, $new_applet_cf) = getBatNFCF();
-			} elsif ($display_divided_LTR_array[$i] eq "fan_speed") {
-				($new_applet_nf, $new_applet_cf) = getFanSpeedNFCF();
-			} elsif ($display_divided_LTR_array[$i] eq "cpu_temp") {
-				($new_applet_nf, $new_applet_cf) = getCPUTempNFCF();
-			} elsif ($display_divided_LTR_array[$i] eq "vpn") {
-				($new_applet_nf, $new_applet_cf) = getVPN_NFCF();
-			}  else {
-				push (@errors, "Error: cannot print applet $display_divided_LTR_array[$i]\n");
-			}
-			$dsnf .= $new_applet_nf;
-			$dscf .= $new_applet_cf;
-		} else {
-			$too_small_to_show_applets_flag=1;
-		}
+sub getDisplayStringsNFCF() { 
+	my @display_list_ltr=generateDisplayLTRArray();
 
-		if (exists $display_divided_LTR_array[$i+1] and $display_divided_LTR_array[$i+1] ne "tail" and $display_divided_LTR_array[$i+1] ne "") {
-			$dscf .= $COLORS{"DIVIDER"};
-			$dscf .= $DIVIDERS{$display_divided_LTR_array[$i+1]};
-			$dsnf .= $DIVIDERS{$display_divided_LTR_array[$i+1]};  #what the fuck is this how does this work lmao
-			$i++;
-		} else {
-			$i=50;
-		}
+	my $dsnf=""; #display string not formatted
+	my $dscf=""; #display string color formatted
+	
+	for (my $i=0; $i<@display_list_ltr; $i++) {
+		my $applet_command="get_".$display_list_ltr[$i]."_NFCF";
+		my ($applet_nf, $applet_cf) = &{$applet_command}();
+		$dsnf .= $applet_nf;
+		$dscf .= $applet_cf;
 	}
 	my $leading_spaces=getLeadingSpaces($dsnf);
 	$dsnf = $leading_spaces.$dsnf;
@@ -1145,6 +1090,9 @@ sub printSnailLogo() {
 $SIG{INT} = sub {
 #	setCursorVisible();
 	print ("\n");
+	if (exists $errors[0]) {
+		die (@errors);
+	}
 	exit (0);
 };
 
