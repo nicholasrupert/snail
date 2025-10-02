@@ -5,18 +5,31 @@ Snail is a tray application that runs in a console, intended to work with a manu
 
 Snail is easy to install: 
 
-  Run "git clone https://github.com/nicholasrupert/snail.git"
+$ git clone https://github.com/nicholasrupert/snail.git
   
-  Run "sudo install.sh" on Linux or "doas install.sh" on OpenBSD.
+$ sudo install.sh
+
+ -- if on Linux; or 
+ 
+$ doas install.sh
+
+ -- if on OpenBSD
   
-  Then run "snail".
+$ snail
   
-  If you want to run it without installing it, you can just run "perl snail.pl".
+  If you want to run it without installing it, you can just run
+  
+$ perl snail.pl
  
   The only dependency is "sensors", if running on Linux. OpenBSD should work out of the box. No support for other OSes right now.
 
   If that doesn't work, post a comment.
   
+---
+
+You should see a menubar-like console output showing one line of text, which contains a snail logo and some system data. 
+To make it useful, put it in a little borderless window in the corner or across the bottom of your screen in a manual tiling window manager.
+    
 --- 
 
 What is the point of this program?
@@ -39,9 +52,9 @@ What is the point of this program?
   If you think my code is garbage, post a comment.
 
 Why is it in Perl?
-  This program basically just parses text output of a bunch of different GNU and Unix utilities. It is a glorified shell script.
-  Perl is for that, with basically C-like syntax, so it is easy. I don't know why it has lost popularity, it's great.
-  Also Perl is already on your machine. I hate installing dependencies, don't you?
+-  This program basically just parses text output of a bunch of different GNU and Unix utilities. It is a glorified shell script.
+-  Perl is for that, with basically C-like syntax, so it is easy. I don't know why it has lost popularity, it's great.
+-  Also Perl is already on your machine. I hate installing dependencies, don't you?
 
 ---
 
