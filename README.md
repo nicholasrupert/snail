@@ -3,9 +3,15 @@ Snail is a tray application that runs in a console, intended to work with a manu
 
 ---
 
-Snail is easy to install: 
+Snail is easy to run: 
 
 $ git clone https://github.com/nicholasrupert/snail.git
+
+$ cd to the directory with snail in it
+
+$ perl snail.pl
+
+To install permanently, if you like it:
   
 $ sudo install.sh
 
@@ -17,10 +23,6 @@ $ doas install.sh
   
 $ snail
   
-  If you want to run it without installing it, you can just run
-  
-$ perl snail.pl
- 
   The only dependency is "sensors", if running on Linux. OpenBSD should work out of the box. No support for other OSes right now.
 
   If that doesn't work, post a comment.
